@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bpr:release xmlns:bpr="http://www.blueprism.co.uk/product/release">
+  <bpr:name>Clean and Simple</bpr:name>
+  <bpr:release-notes>PrismShift corpus sample #1 - a small, well-built process with zero planted issues.</bpr:release-notes>
+  <bpr:created>2026-07-20 12:00:00Z</bpr:created>
+  <bpr:package-id>1</bpr:package-id>
+  <bpr:package-name>PrismShift Corpus</bpr:package-name>
+  <bpr:user-created-by>corpus-generator</bpr:user-created-by>
+  <bpr:contents count="1">
+    <process id="ab8f2c31-5f77-4b2d-9c93-b6c31b2a0001" name="Loan Payment Calculator" xmlns="">
+      <process name="Loan Payment Calculator" version="1.0" bpversion="6.10.1.12345" narrative="Calculates a simple-interest monthly payment for a loan. Inputs are validated on a dedicated calculation page; invalid inputs raise a business exception which is recovered on the main page." byrefcollection="true">
+        <view>
+          <camerax>0</camerax>
+          <cameray>0</cameray>
+          <zoom>1</zoom>
+        </view>
+        <preconditions />
+        <endpoint narrative="Monthly Payment output is populated." />
+        <subsheet subsheetid="674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001" type="MainPage" published="True">
+          <name>Main Page</name>
+          <view>
+            <camerax>0</camerax>
+            <cameray>0</cameray>
+            <zoom>1</zoom>
+          </view>
+        </subsheet>
+        <subsheet subsheetid="674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002" type="Normal" published="False">
+          <name>Calculate Payment</name>
+          <view>
+            <camerax>0</camerax>
+            <cameray>0</cameray>
+            <zoom>1</zoom>
+          </view>
+        </subsheet>
+
+        <!-- ===================== Main Page ===================== -->
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000101" name="Start" type="Start">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="15" y="-135" />
+          <inputs>
+            <input type="number" name="Principal" narrative="Loan principal amount" stage="Principal" />
+            <input type="number" name="Annual Rate" narrative="Annual interest rate in percent" stage="Annual Rate" />
+            <input type="number" name="Term Months" narrative="Loan term in months" stage="Term Months" />
+          </inputs>
+          <onsuccess>aaaaaaaa-0000-4000-9000-000000000102</onsuccess>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000102" name="Calculate Payment" type="SubSheet">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="15" y="-60" />
+          <processid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</processid>
+          <inputs>
+            <input type="number" name="Principal" expr="[Principal]" />
+            <input type="number" name="Annual Rate" expr="[Annual Rate]" />
+            <input type="number" name="Term Months" expr="[Term Months]" />
+          </inputs>
+          <outputs>
+            <output type="number" name="Monthly Payment" stage="Monthly Payment" />
+          </outputs>
+          <onsuccess>aaaaaaaa-0000-4000-9000-000000000106</onsuccess>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000103" name="Recover" type="Recover">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="150" y="-60" />
+          <onsuccess>aaaaaaaa-0000-4000-9000-000000000104</onsuccess>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000104" name="Resume" type="Resume">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="150" y="0" />
+          <onsuccess>aaaaaaaa-0000-4000-9000-000000000106</onsuccess>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000106" name="End" type="End">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="15" y="75" />
+          <outputs>
+            <output type="number" name="Monthly Payment" narrative="Calculated monthly payment" stage="Monthly Payment" />
+          </outputs>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000111" name="Principal" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="210" y="-135" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000112" name="Annual Rate" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="210" y="-105" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000113" name="Term Months" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="210" y="-75" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000114" name="Monthly Payment" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0001</subsheetid>
+          <display x="210" y="-45" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+
+        <!-- ===================== Calculate Payment ===================== -->
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000201" name="Start" type="Start">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="15" y="-135" />
+          <inputs>
+            <input type="number" name="Principal" narrative="" stage="Principal" />
+            <input type="number" name="Annual Rate" narrative="" stage="Annual Rate" />
+            <input type="number" name="Term Months" narrative="" stage="Term Months" />
+          </inputs>
+          <onsuccess>aaaaaaaa-0000-4000-9000-000000000202</onsuccess>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000202" name="Valid Inputs?" type="Decision">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="15" y="-60" />
+          <decision expression="([Principal] &gt; 0) AND ([Term Months] &gt; 0)" />
+          <ontrue>aaaaaaaa-0000-4000-9000-000000000203</ontrue>
+          <onfalse>aaaaaaaa-0000-4000-9000-000000000204</onfalse>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000203" name="Compute Payment" type="MultipleCalculation">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="15" y="15" />
+          <steps>
+            <calculation expression="[Annual Rate] / 12 / 100" stage="Monthly Rate" />
+            <calculation expression="([Principal] + ([Principal] * [Monthly Rate] * [Term Months])) / [Term Months]" stage="Monthly Payment" />
+          </steps>
+          <onsuccess>aaaaaaaa-0000-4000-9000-000000000206</onsuccess>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000204" name="Invalid Loan Inputs" type="Exception">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="150" y="-60" />
+          <exception type="Business Exception" detail="&quot;Principal and Term Months must be greater than zero&quot;" />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000206" name="End" type="End">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="15" y="90" />
+          <outputs>
+            <output type="number" name="Monthly Payment" narrative="" stage="Monthly Payment" />
+          </outputs>
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000211" name="Principal" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="210" y="-135" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000212" name="Annual Rate" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="210" y="-105" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000213" name="Term Months" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="210" y="-75" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000214" name="Monthly Rate" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="210" y="-45" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="aaaaaaaa-0000-4000-9000-000000000215" name="Monthly Payment" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d0002</subsheetid>
+          <display x="210" y="-15" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+      </process>
+    </process>
+  </bpr:contents>
+</bpr:release>

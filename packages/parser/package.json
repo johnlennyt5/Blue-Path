@@ -1,0 +1,22 @@
+{
+  "name": "@prismshift/parser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prismshift/ir": "workspace:*",
+    "fast-xml-parser": "^4.5.0"
+  },
+  "devDependencies": {
+    "@prismshift/corpus": "workspace:*",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

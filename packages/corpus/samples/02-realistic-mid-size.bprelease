@@ -1,0 +1,491 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bpr:release xmlns:bpr="http://www.blueprism.co.uk/product/release">
+  <bpr:name>Realistic Mid-Size</bpr:name>
+  <bpr:release-notes>PrismShift corpus sample #2 - queue-driven dispatcher/performer estate with 3 planted issues (SEC-001, REL-003, MNT-002). See answer key.</bpr:release-notes>
+  <bpr:created>2026-07-20 12:30:00Z</bpr:created>
+  <bpr:package-id>2</bpr:package-id>
+  <bpr:package-name>PrismShift Corpus</bpr:package-name>
+  <bpr:user-created-by>corpus-generator</bpr:user-created-by>
+  <bpr:contents count="5">
+
+    <!-- ======================================================= -->
+    <!-- Process 1: Invoice Dispatcher                            -->
+    <!-- Planted: SEC-001 (password literal in action input),     -->
+    <!--          MNT-002 (unused data item "Temp Counter")       -->
+    <!-- ======================================================= -->
+    <process id="ab8f2c31-5f77-4b2d-9c93-b6c31b2a0002" name="Invoice Dispatcher" xmlns="">
+      <process name="Invoice Dispatcher" version="1.0" bpversion="6.10.1.12345" narrative="Nightly dispatcher: pulls pending invoices from the export archive via the Invoice Entry VBO and loads them into the Invoices Queue for the performer." byrefcollection="true">
+        <view>
+          <camerax>0</camerax>
+          <cameray>0</cameray>
+          <zoom>1</zoom>
+        </view>
+        <preconditions />
+        <endpoint narrative="All pending invoices are queued." />
+        <subsheet subsheetid="674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001" type="MainPage" published="True">
+          <name>Main Page</name>
+          <view>
+            <camerax>0</camerax>
+            <cameray>0</cameray>
+            <zoom>1</zoom>
+          </view>
+        </subsheet>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000301" name="Start" type="Start">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="15" y="-165" />
+          <inputs />
+          <onsuccess>bbbbbbbb-0000-4000-9000-000000000302</onsuccess>
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000302" name="Get Pending Invoices" type="Action">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="15" y="-105" />
+          <resource object="Invoice Entry VBO" action="Get Pending Invoices" />
+          <inputs>
+            <input type="password" name="Archive Password" expr="&quot;ArchiveP@ss2024!&quot;" />
+          </inputs>
+          <outputs>
+            <output type="collection" name="Invoices" stage="New Invoices" />
+          </outputs>
+          <onsuccess>bbbbbbbb-0000-4000-9000-000000000303</onsuccess>
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000303" name="For Each Invoice" type="LoopStart">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="15" y="-45" />
+          <groupid>abababab-0000-4000-9000-000000000001</groupid>
+          <loopdata>New Invoices</loopdata>
+          <onsuccess>bbbbbbbb-0000-4000-9000-000000000304</onsuccess>
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000304" name="Add To Queue" type="Action">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="15" y="15" />
+          <resource object="Work Queues" action="Add To Queue" />
+          <inputs>
+            <input type="text" name="Queue Name" expr="&quot;Invoices Queue&quot;" />
+            <input type="collection" name="Data" expr="[New Invoices]" />
+          </inputs>
+          <outputs />
+          <onsuccess>bbbbbbbb-0000-4000-9000-000000000305</onsuccess>
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000305" name="End Loop" type="LoopEnd">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="15" y="75" />
+          <groupid>abababab-0000-4000-9000-000000000001</groupid>
+          <onsuccess>bbbbbbbb-0000-4000-9000-000000000308</onsuccess>
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000306" name="Recover" type="Recover">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="165" y="-45" />
+          <onsuccess>bbbbbbbb-0000-4000-9000-000000000307</onsuccess>
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000307" name="Resume" type="Resume">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="165" y="15" />
+          <onsuccess>bbbbbbbb-0000-4000-9000-000000000308</onsuccess>
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000308" name="End" type="End">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="15" y="135" />
+          <outputs />
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000311" name="Temp Counter" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="210" y="-165" />
+          <datatype>number</datatype>
+          <initialvalue>0</initialvalue>
+          <alwaysinit />
+        </stage>
+        <stage stageid="bbbbbbbb-0000-4000-9000-000000000312" name="New Invoices" type="Collection">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1001</subsheetid>
+          <display x="210" y="-105" />
+          <collectioninfo>
+            <field name="Invoice Ref" type="text" />
+            <field name="Amount" type="number" />
+            <field name="Due Date" type="date" />
+          </collectioninfo>
+        </stage>
+      </process>
+    </process>
+
+    <!-- ======================================================= -->
+    <!-- Process 2: Invoice Performer (clean)                     -->
+    <!-- ======================================================= -->
+    <process id="ab8f2c31-5f77-4b2d-9c93-b6c31b2a0003" name="Invoice Performer" xmlns="">
+      <process name="Invoice Performer" version="1.0" bpversion="6.10.1.12345" narrative="Works the Invoices Queue: takes the next item, enters it into the invoice web application via the Invoice Entry VBO, and marks the item completed. Failures are marked as exceptions on the queue item and the performer moves on." byrefcollection="true">
+        <view>
+          <camerax>0</camerax>
+          <cameray>0</cameray>
+          <zoom>1</zoom>
+        </view>
+        <preconditions />
+        <endpoint narrative="Queue drained; all items completed or exceptioned." />
+        <subsheet subsheetid="674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002" type="MainPage" published="True">
+          <name>Main Page</name>
+          <view>
+            <camerax>0</camerax>
+            <cameray>0</cameray>
+            <zoom>1</zoom>
+          </view>
+        </subsheet>
+        <subsheet subsheetid="674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003" type="Normal" published="False">
+          <name>Process Item</name>
+          <view>
+            <camerax>0</camerax>
+            <cameray>0</cameray>
+            <zoom>1</zoom>
+          </view>
+        </subsheet>
+
+        <!-- Main Page -->
+        <stage stageid="cccccccc-0000-4000-9000-000000000401" name="Start" type="Start">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="15" y="-180" />
+          <inputs />
+          <onsuccess>cccccccc-0000-4000-9000-000000000402</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000402" name="Get Next Item" type="Action">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="15" y="-120" />
+          <resource object="Work Queues" action="Get Next Item" />
+          <inputs>
+            <input type="text" name="Queue Name" expr="&quot;Invoices Queue&quot;" />
+          </inputs>
+          <outputs>
+            <output type="text" name="Item ID" stage="Item ID" />
+            <output type="collection" name="Data" stage="Item Data" />
+          </outputs>
+          <onsuccess>cccccccc-0000-4000-9000-000000000403</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000403" name="Item Retrieved?" type="Decision">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="15" y="-60" />
+          <decision expression="[Item ID] &lt;&gt; &quot;&quot;" />
+          <ontrue>cccccccc-0000-4000-9000-000000000404</ontrue>
+          <onfalse>cccccccc-0000-4000-9000-000000000409</onfalse>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000404" name="Process Item" type="SubSheet">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="15" y="0" />
+          <processid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</processid>
+          <inputs>
+            <input type="text" name="Item ID" expr="[Item ID]" />
+            <input type="collection" name="Item Data" expr="[Item Data]" />
+          </inputs>
+          <outputs />
+          <onsuccess>cccccccc-0000-4000-9000-000000000405</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000405" name="Mark Completed" type="Action">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="15" y="60" />
+          <resource object="Work Queues" action="Mark Completed" />
+          <inputs>
+            <input type="text" name="Queue Name" expr="&quot;Invoices Queue&quot;" />
+            <input type="text" name="Item ID" expr="[Item ID]" />
+          </inputs>
+          <outputs />
+          <onsuccess>cccccccc-0000-4000-9000-000000000406</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000406" name="Next Item" type="Anchor">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="150" y="60" />
+          <onsuccess>cccccccc-0000-4000-9000-000000000402</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000407" name="Recover" type="Recover">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="255" y="-60" />
+          <onsuccess>cccccccc-0000-4000-9000-000000000408</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000408" name="Resume" type="Resume">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="255" y="0" />
+          <onsuccess>cccccccc-0000-4000-9000-000000000409</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000409" name="End" type="End">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="15" y="120" />
+          <outputs />
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000411" name="Item ID" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="210" y="-180" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000412" name="Item Data" type="Collection">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1002</subsheetid>
+          <display x="210" y="-120" />
+          <collectioninfo>
+            <field name="Invoice Ref" type="text" />
+            <field name="Amount" type="number" />
+            <field name="Due Date" type="date" />
+          </collectioninfo>
+        </stage>
+
+        <!-- Process Item -->
+        <stage stageid="cccccccc-0000-4000-9000-000000000501" name="Start" type="Start">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="15" y="-120" />
+          <inputs>
+            <input type="text" name="Item ID" narrative="" stage="Item ID" />
+            <input type="collection" name="Item Data" narrative="" stage="Item Data" />
+          </inputs>
+          <onsuccess>cccccccc-0000-4000-9000-000000000502</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000502" name="Enter Invoice" type="Action">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="15" y="-60" />
+          <resource object="Invoice Entry VBO" action="Enter Invoice" />
+          <inputs>
+            <input type="text" name="Invoice Ref" expr="[Item Data.Invoice Ref]" />
+            <input type="number" name="Amount" expr="[Item Data.Amount]" />
+          </inputs>
+          <outputs />
+          <onsuccess>cccccccc-0000-4000-9000-000000000506</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000503" name="Recover" type="Recover">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="165" y="-60" />
+          <onsuccess>cccccccc-0000-4000-9000-000000000504</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000504" name="Resume" type="Resume">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="165" y="0" />
+          <onsuccess>cccccccc-0000-4000-9000-000000000505</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000505" name="Mark Exception" type="Action">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="165" y="60" />
+          <resource object="Work Queues" action="Mark Exception" />
+          <inputs>
+            <input type="text" name="Queue Name" expr="&quot;Invoices Queue&quot;" />
+            <input type="text" name="Item ID" expr="[Item ID]" />
+            <input type="text" name="Exception Reason" expr="&quot;Failed to enter invoice&quot;" />
+          </inputs>
+          <outputs />
+          <onsuccess>cccccccc-0000-4000-9000-000000000506</onsuccess>
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000506" name="End" type="End">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="15" y="120" />
+          <outputs />
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000511" name="Item ID" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="210" y="-120" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="cccccccc-0000-4000-9000-000000000512" name="Item Data" type="Collection">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1003</subsheetid>
+          <display x="210" y="-60" />
+          <collectioninfo>
+            <field name="Invoice Ref" type="text" />
+            <field name="Amount" type="number" />
+            <field name="Due Date" type="date" />
+          </collectioninfo>
+        </stage>
+      </process>
+    </process>
+
+    <!-- ======================================================= -->
+    <!-- Object: Invoice Entry VBO                                -->
+    <!-- Planted: REL-003 (Wait For Confirmation has no timeout)  -->
+    <!-- ======================================================= -->
+    <object id="ab8f2c31-5f77-4b2d-9c93-b6c31b2a0004" name="Invoice Entry VBO" xmlns="">
+      <process name="Invoice Entry VBO" type="object" version="1.0" bpversion="6.10.1.12345" narrative="Drives the invoice web application: reads the nightly export archive and enters invoices into the web form." byrefcollection="true">
+        <appdef>
+          <application name="Invoice Web App" mode="HTML" />
+          <element id="eeeeeeee-0000-4000-9000-00000000e001" name="Invoice Ref Field" mode="HTML">
+            <attributes>
+              <attribute name="tag" matchtype="exact" enabled="true" value="INPUT" />
+              <attribute name="id" matchtype="exact" enabled="true" value="invoiceRef" />
+            </attributes>
+          </element>
+          <element id="eeeeeeee-0000-4000-9000-00000000e002" name="Amount Field" mode="HTML">
+            <attributes>
+              <attribute name="tag" matchtype="exact" enabled="true" value="INPUT" />
+              <attribute name="id" matchtype="exact" enabled="true" value="invoiceAmount" />
+            </attributes>
+          </element>
+          <element id="eeeeeeee-0000-4000-9000-00000000e003" name="Save Button" mode="HTML">
+            <attributes>
+              <attribute name="tag" matchtype="exact" enabled="true" value="BUTTON" />
+              <attribute name="id" matchtype="exact" enabled="true" value="saveInvoice" />
+            </attributes>
+          </element>
+          <element id="eeeeeeee-0000-4000-9000-00000000e004" name="Confirmation Banner" mode="HTML">
+            <attributes>
+              <attribute name="tag" matchtype="exact" enabled="true" value="DIV" />
+              <attribute name="id" matchtype="exact" enabled="true" value="confirmationBanner" />
+            </attributes>
+          </element>
+        </appdef>
+        <view>
+          <camerax>0</camerax>
+          <cameray>0</cameray>
+          <zoom>1</zoom>
+        </view>
+        <preconditions />
+        <endpoint narrative="" />
+        <subsheet subsheetid="674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1004" type="Normal" published="True">
+          <name>Get Pending Invoices</name>
+          <view>
+            <camerax>0</camerax>
+            <cameray>0</cameray>
+            <zoom>1</zoom>
+          </view>
+        </subsheet>
+        <subsheet subsheetid="674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005" type="Normal" published="True">
+          <name>Enter Invoice</name>
+          <view>
+            <camerax>0</camerax>
+            <cameray>0</cameray>
+            <zoom>1</zoom>
+          </view>
+        </subsheet>
+
+        <!-- Get Pending Invoices -->
+        <stage stageid="dddddddd-0000-4000-9000-000000000601" name="Start" type="Start">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1004</subsheetid>
+          <display x="15" y="-105" />
+          <inputs>
+            <input type="password" name="Archive Password" narrative="" stage="Archive Password" />
+          </inputs>
+          <onsuccess>dddddddd-0000-4000-9000-000000000602</onsuccess>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000602" name="Read Export File" type="Code">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1004</subsheetid>
+          <display x="15" y="-45" />
+          <inputs>
+            <input type="password" name="Archive Password" expr="[Archive Password]" />
+            <input type="text" name="System URL" expr="[Invoice System URL]" />
+          </inputs>
+          <outputs>
+            <output type="collection" name="Invoices" stage="Pending Invoices" />
+          </outputs>
+          <code language="vbnet"><![CDATA[
+' Reads the nightly export archive and returns pending invoices
+Dim reader As New ExportReader(System_URL, Archive_Password)
+Invoices = reader.ReadPending()
+]]></code>
+          <onsuccess>dddddddd-0000-4000-9000-000000000603</onsuccess>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000603" name="End" type="End">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1004</subsheetid>
+          <display x="15" y="15" />
+          <outputs>
+            <output type="collection" name="Invoices" narrative="" stage="Pending Invoices" />
+          </outputs>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000611" name="Archive Password" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1004</subsheetid>
+          <display x="210" y="-105" />
+          <datatype>password</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000612" name="Invoice System URL" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1004</subsheetid>
+          <display x="210" y="-45" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <exposure>Environment</exposure>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000613" name="Pending Invoices" type="Collection">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1004</subsheetid>
+          <display x="210" y="15" />
+          <collectioninfo>
+            <field name="Invoice Ref" type="text" />
+            <field name="Amount" type="number" />
+            <field name="Due Date" type="date" />
+          </collectioninfo>
+        </stage>
+
+        <!-- Enter Invoice -->
+        <stage stageid="dddddddd-0000-4000-9000-000000000701" name="Start" type="Start">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="15" y="-150" />
+          <inputs>
+            <input type="text" name="Invoice Ref" narrative="" stage="Invoice Ref" />
+            <input type="number" name="Amount" narrative="" stage="Amount" />
+          </inputs>
+          <onsuccess>dddddddd-0000-4000-9000-000000000702</onsuccess>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000702" name="Write Invoice Fields" type="Write">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="15" y="-90" />
+          <steps>
+            <step element="eeeeeeee-0000-4000-9000-00000000e001" expr="[Invoice Ref]" />
+            <step element="eeeeeeee-0000-4000-9000-00000000e002" expr="[Amount]" />
+          </steps>
+          <onsuccess>dddddddd-0000-4000-9000-000000000703</onsuccess>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000703" name="Click Save" type="Navigate">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="15" y="-30" />
+          <steps>
+            <step element="eeeeeeee-0000-4000-9000-00000000e003" action="Click" />
+          </steps>
+          <onsuccess>dddddddd-0000-4000-9000-000000000704</onsuccess>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000704" name="Wait For Confirmation" type="WaitStart">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="15" y="30" />
+          <timeout />
+          <choices>
+            <choice name="Confirmation Shown">
+              <element>eeeeeeee-0000-4000-9000-00000000e004</element>
+              <condition>CheckExists</condition>
+              <onsuccess>dddddddd-0000-4000-9000-000000000707</onsuccess>
+            </choice>
+          </choices>
+          <ontimeout>dddddddd-0000-4000-9000-000000000705</ontimeout>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000705" name="Timed Out" type="WaitEnd">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="150" y="30" />
+          <onsuccess>dddddddd-0000-4000-9000-000000000706</onsuccess>
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000706" name="Save Not Confirmed" type="Exception">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="150" y="90" />
+          <exception type="System Exception" detail="&quot;Invoice save was not confirmed by the application&quot;" />
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000707" name="End" type="End">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="15" y="90" />
+          <outputs />
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000711" name="Invoice Ref" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="210" y="-150" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <stage stageid="dddddddd-0000-4000-9000-000000000712" name="Amount" type="Data">
+          <subsheetid>674a8b1e-71c2-4b1a-9e2d-3f5a6c7d1005</subsheetid>
+          <display x="210" y="-90" />
+          <datatype>number</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+      </process>
+    </object>
+
+    <!-- ======================================================= -->
+    <!-- Environment                                              -->
+    <!-- ======================================================= -->
+    <work-queue id="f1f1f1f1-0000-4000-9000-000000000001" name="Invoices Queue" xmlns="">
+      <keyfield>Invoice Ref</keyfield>
+      <maxattempts>3</maxattempts>
+      <encrypted>false</encrypted>
+    </work-queue>
+    <environment-variable name="Invoice System URL" xmlns="">
+      <datatype>text</datatype>
+      <value>https://invoices.corp.example</value>
+      <description>Base URL of the invoice web application</description>
+    </environment-variable>
+  </bpr:contents>
+</bpr:release>

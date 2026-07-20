@@ -1,0 +1,17 @@
+# Normalize line endings: everything text is LF in the repo and working tree.
+# Modern Windows tooling (Node, pnpm, VS Code, PowerShell 5+) handles LF fine,
+# and this keeps hashes/snapshots identical across contributors and CI.
+* text=auto eol=lf
+
+# Windows scripts that genuinely require CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets — never touch
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.zip binary

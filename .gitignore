@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+.turbo/
+coverage/
+
+# environment
+.env
+.env.*
+!.env.example
+
+# editor/OS noise
+.DS_Store
+Thumbs.db
+*.local

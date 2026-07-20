@@ -1,0 +1,105 @@
+{
+  "id": "02-realistic-mid-size",
+  "file": "02-realistic-mid-size.bprelease",
+  "description": "A realistic queue-driven estate: an Invoice Dispatcher loads pending invoices into a work queue, an Invoice Performer drains the queue and drives the Invoice Entry VBO (HTML application) to enter each invoice. Contains exactly 3 planted issues; everything else is clean.",
+  "expectedParse": {
+    "errors": 0,
+    "warnings": 0,
+    "bpVersion": "6.10.1.12345",
+    "packageName": "PrismShift Corpus",
+    "counts": {
+      "processes": 2,
+      "objects": 1,
+      "workQueues": 1,
+      "environmentVars": 1,
+      "credentialRefs": 0
+    },
+    "processes": [
+      {
+        "name": "Invoice Dispatcher",
+        "pages": ["Main Page"],
+        "stageCount": 10,
+        "dataItemCount": 2,
+        "startupParams": [],
+        "outputs": [],
+        "stageKinds": {
+          "start": 1,
+          "end": 1,
+          "action": 2,
+          "loopStart": 1,
+          "loopEnd": 1,
+          "recover": 1,
+          "resume": 1,
+          "data": 1,
+          "collection": 1
+        }
+      },
+      {
+        "name": "Invoice Performer",
+        "pages": ["Main Page", "Process Item"],
+        "stageCount": 19,
+        "dataItemCount": 4,
+        "startupParams": [],
+        "outputs": [],
+        "stageKinds": {
+          "start": 2,
+          "end": 2,
+          "action": 4,
+          "decision": 1,
+          "subsheetRef": 1,
+          "anchor": 1,
+          "recover": 2,
+          "resume": 2,
+          "data": 2,
+          "collection": 2
+        }
+      }
+    ],
+    "objects": [
+      {
+        "name": "Invoice Entry VBO",
+        "applicationName": "Invoice Web App",
+        "appElementCount": 4,
+        "pages": ["Get Pending Invoices", "Enter Invoice"],
+        "stageCount": 15,
+        "dataItemCount": 5,
+        "stageKinds": {
+          "start": 2,
+          "end": 2,
+          "code": 1,
+          "write": 1,
+          "navigate": 1,
+          "wait": 1,
+          "anchor": 1,
+          "exception": 1,
+          "data": 4,
+          "collection": 1
+        }
+      }
+    ]
+  },
+  "expectedFindings": [
+    {
+      "ruleId": "SEC-001",
+      "severity": "critical",
+      "processName": "Invoice Dispatcher",
+      "pageName": "Main Page",
+      "stageName": "Get Pending Invoices"
+    },
+    {
+      "ruleId": "REL-003",
+      "severity": "medium",
+      "objectName": "Invoice Entry VBO",
+      "pageName": "Enter Invoice",
+      "stageName": "Wait For Confirmation"
+    },
+    {
+      "ruleId": "MNT-002",
+      "severity": "low",
+      "processName": "Invoice Dispatcher",
+      "pageName": "Main Page",
+      "stageName": "Temp Counter"
+    }
+  ],
+  "notes": "Planted issues: (1) SEC-001 — the literal \"ArchiveP@ss2024!\" is passed as the Archive Password input on 'Get Pending Invoices' instead of a Credential Manager lookup. (2) REL-003 — 'Wait For Confirmation' in the VBO's Enter Invoice page has an empty <timeout/>. (3) MNT-002 — data item 'Temp Counter' on the Dispatcher's Main Page is never referenced. Parser conventions this sample exercises: WaitEnd maps to IR kind 'anchor' (timeout continuation point); actions on object \"Work Queues\" are queue operations whose Queue Name literal becomes the IR queueName; the VBO's 'Invoice System URL' data item has exposure=Environment binding it to the release's environment variable. The performer's Get Next Item cycle is guarded by the 'Item Retrieved?' decision — it must NOT trigger REL-002."
+}

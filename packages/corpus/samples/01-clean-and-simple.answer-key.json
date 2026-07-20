@@ -1,0 +1,42 @@
+{
+  "id": "01-clean-and-simple",
+  "file": "01-clean-and-simple.bprelease",
+  "description": "A small, well-built loan-payment process: validated inputs, a dedicated calculation subsheet, a deliberate business-exception path for invalid inputs, and Recover/Resume coverage on the main page. Contains zero planted issues — any finding reported against this sample is a false positive.",
+  "expectedParse": {
+    "errors": 0,
+    "warnings": 0,
+    "bpVersion": "6.10.1.12345",
+    "packageName": "PrismShift Corpus",
+    "counts": {
+      "processes": 1,
+      "objects": 0,
+      "workQueues": 0,
+      "environmentVars": 0,
+      "credentialRefs": 0
+    },
+    "processes": [
+      {
+        "name": "Loan Payment Calculator",
+        "pages": ["Main Page", "Calculate Payment"],
+        "stageCount": 19,
+        "dataItemCount": 9,
+        "startupParams": ["Principal", "Annual Rate", "Term Months"],
+        "outputs": ["Monthly Payment"],
+        "stageKinds": {
+          "start": 2,
+          "end": 2,
+          "data": 9,
+          "subsheetRef": 1,
+          "decision": 1,
+          "multiCalc": 1,
+          "exception": 1,
+          "recover": 1,
+          "resume": 1
+        }
+      }
+    ],
+    "objects": []
+  },
+  "expectedFindings": [],
+  "notes": "REL-001 exception coverage is satisfied by the main page's Recover/Resume pair: the subsheet's deliberate Exception stage propagates to the caller where it is recovered. The Exception stage itself is intentional validation behavior, not a defect."
+}

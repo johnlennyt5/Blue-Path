@@ -4,6 +4,33 @@
 
 ---
 
+## Progress
+
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started — updated as each story completes.
+
+| Sprint | Status | Stories |
+|---|---|---|
+| S1 — "It Parses" | ✅ complete | 7/7 done |
+| S2 — "It Judges" | ⬜ | 0/7 |
+| S3 — "It Explains" | ⬜ | 0/5 |
+| S4 — "It Converts (Part 1)" | ⬜ | 0/5 |
+| S5 — "It Converts (Part 2)" | ⬜ | 0/6 |
+| S6 — "Team Mode" | ⬜ | 0/7 |
+| S7 — "AI & Audit" | ⬜ | 0/5 |
+| S8 — "Ship It" | ⬜ | 0/6 |
+
+### Completed log
+
+- **2026-07-20 — S1-1** Monorepo foundation: pnpm/Turborepo workspace, TS strict, ESLint 9, Vitest, GitHub Actions CI; all 6 packages + web app scaffolded with the one-way dependency chain enforced; verified end-to-end on Windows PowerShell.
+- **2026-07-20 — S1-2** IR types + graph utilities: full ARCHITECTURE §3 type model (AutomationModel, 24-kind Stage union, expressions raw+AST, App Modeller, findings), `walkStages()`, `buildDependencyGraph()`, `validateModel()`; 12 unit tests incl. dedup, loop-pair, and dangling-edge cases.
+- **2026-07-20 — S1-3** Corpus sample #1 "Clean & Simple": hand-authored BP 6.x-schema `.bprelease` (Loan Payment Calculator — 2 pages, 19 stages, validation + business-exception path with Recover/Resume, zero planted issues) + typed `answer-key.json` schema, sample registry, `loadSample()` loader, and structural self-validation tests (well-formedness, raw counts vs key, stage/page integrity).
+- **2026-07-20 — S1-7** Web Worker parsing: Comlink-wrapped parser worker (`parser.worker.ts`) via Vite module workers; `parseReleaseXml()` client with main-thread fallback where Workers don't exist (tests); verified in a real browser via CDP — console shows "parser worker started" before "parse complete". **Sprint 1 complete.** Also this sprint (unplanned): intake diagnostics — `[PrismShift]` console log trail across drop→read→parse, visible build stamp (stale-cache detector), window-level drop guard, FileReader fallback, no-silent-failure error surfacing, and editor-drag detection with on-page guidance (dragging from VS Code/Cursor sends links, not files) + 6 React integration tests (jsdom).
+- **2026-07-20 — S1-6** Parser + tree view: `parseBpRelease()` (async, SHA-256 sourceHash via crypto.subtle) maps all 24 corpus stage types to the IR — stages/edges (flow/true/false/choice incl. wait choices + Time Out), data items with exposure, collections with fields, loop pairing, queue-action tagging, App Modeller (modes, match types), work queues, env vars; single-process `.xml` root supported; GenericStage + warning for unknown types; errors never thrown. Dependency graph auto-populated via `buildDependencyGraph`. 12 answer-key-driven tests (both samples: zero errors/warnings, exact kind tallies, determinism, planted-issue raw material preserved, resilience cases). Web: session store parses on intake; ProcessTree renders processes/objects → pages → stages with kind badges, error/warning panels, and release summary line.
+- **2026-07-20 — S1-5** Drop zone: drag-and-drop + click-to-browse intake reading files entirely client-side (`File.text()`); pure `fileIntake` module (extension/size/binary/content sniffing, 50 MB §12 ceiling, friendly rejection reasons — 11 unit tests) wired through a Zustand session store; loaded-file card with reset; privacy note and error alerts in the UI.
+- **2026-07-20 — S1-4** Corpus sample #2 "Realistic Mid-Size": queue-driven estate (Invoice Dispatcher → Invoices Queue → Invoice Performer → Invoice Entry VBO with 4-element HTML App Modeller; 44 stages total incl. loop, code, write/navigate/wait, guarded queue cycle). Exactly 3 planted issues documented in the key: SEC-001 (password literal "ArchiveP@ss2024!" as action input), REL-003 (empty wait timeout), MNT-002 (unused "Temp Counter"). Answer-key schema extended with object stats + object-located findings; corpus tests now also verify appdef element counts and that every stage link (onsuccess/ontrue/onfalse/ontimeout/choice) resolves.
+
+---
+
 ## Epic Map
 
 | Epic | Goal | Sprints |
@@ -24,15 +51,15 @@
 
 **Sprint goal:** drop a synthetic `.bprelease` into a running web app and see its parsed process tree.
 
-| ID | Story | AC (abridged) | Pts |
-|---|---|---|---|
-| S1-1 | As a dev, I have a pnpm/Turborepo monorepo with TS strict, ESLint, Vitest, CI (lint+test+build) | `pnpm test` green in CI; packages scaffolded per ARCHITECTURE §2 | 3 |
-| S1-2 | As a dev, I have IR types + graph utilities | Types compile per §3; `walkStages`, `buildDependencyGraph` unit-tested | 3 |
-| S1-3 | As a dev, I have corpus sample #1 "Clean & Simple" with answer key | Valid BP 6.x-schema XML; answer-key.json lists parse stats + zero expected findings | 3 |
-| S1-4 | As a dev, I have corpus sample #2 "Realistic Mid-Size" with planted issues + answer key | Queue-driven dispatcher/performer; 3 planted issues documented in key | 3 |
-| S1-5 | As a user, I can drag a `.bprelease` file into the web app | Vite app with drop zone; file read client-side; rejects non-XML gracefully | 2 |
-| S1-6 | As a user, I see the parsed process tree (processes → pages → stages) | Parser handles samples 1–2 with zero errors; tree view renders; warnings surfaced | 5 |
-| S1-7 | As a dev, parsing runs in a Web Worker | UI thread never blocks > 100 ms during parse | 2 |
+| ID | Status | Story | AC (abridged) | Pts |
+|---|---|---|---|---|
+| S1-1 | ✅ 2026-07-20 | As a dev, I have a pnpm/Turborepo monorepo with TS strict, ESLint, Vitest, CI (lint+test+build) | `pnpm test` green in CI; packages scaffolded per ARCHITECTURE §2 | 3 |
+| S1-2 | ✅ 2026-07-20 | As a dev, I have IR types + graph utilities | Types compile per §3; `walkStages`, `buildDependencyGraph` unit-tested | 3 |
+| S1-3 | ✅ 2026-07-20 | As a dev, I have corpus sample #1 "Clean & Simple" with answer key | Valid BP 6.x-schema XML; answer-key.json lists parse stats + zero expected findings | 3 |
+| S1-4 | ✅ 2026-07-20 | As a dev, I have corpus sample #2 "Realistic Mid-Size" with planted issues + answer key | Queue-driven dispatcher/performer; 3 planted issues documented in key | 3 |
+| S1-5 | ✅ 2026-07-20 | As a user, I can drag a `.bprelease` file into the web app | Vite app with drop zone; file read client-side; rejects non-XML gracefully | 2 |
+| S1-6 | ✅ 2026-07-20 | As a user, I see the parsed process tree (processes → pages → stages) | Parser handles samples 1–2 with zero errors; tree view renders; warnings surfaced | 5 |
+| S1-7 | ✅ 2026-07-20 | As a dev, parsing runs in a Web Worker | UI thread never blocks > 100 ms during parse | 2 |
 
 **Definition of done for the sprint:** corpus samples parse to IR matching answer-key stats in CI.
 
