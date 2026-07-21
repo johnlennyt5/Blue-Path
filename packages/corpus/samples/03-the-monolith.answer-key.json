@@ -206,5 +206,41 @@
       "processName": "Customer Account Reconciliation"
     }
   ],
+  "expectedSummaries": [
+    {
+      "processName": "Customer Account Reconciliation",
+      "applicationsTouched": [
+        "Ledger Terminal"
+      ],
+      "objectsCalled": [
+        "Ledger Terminal VBO"
+      ],
+      "queuesUsed": [
+        "Reconciliation Queue"
+      ],
+      "inputs": [
+        "SAP Password",
+        "Run Date"
+      ],
+      "outputs": [
+        "Total Metrics"
+      ],
+      "hasRecovery": false,
+      "recoveryPages": [],
+      "deliberateThrows": false,
+      "mainPageFirstSteps": [
+        "Call Ledger Terminal VBO › Log In",
+        "Call Ledger Terminal VBO › Read Ledger Export",
+        "For each row in Customer Records"
+      ],
+      "sensitiveItems": [
+        "Account Number",
+        "Customer Records.Account Number",
+        "Customer Records.SSN",
+        "Customer SSN",
+        "Work SSN"
+      ]
+    }
+  ],
   "notes": "Planted issues (12 findings): SEC-002 - Startup parameter \"SAP Password\" is plain text instead of a Credential Manager lookup; SEC-003 - SSN flows into a log/alert stage; SEC-004 - Hardcoded UNC path in data item initial value; REL-001 - No Recover/Resume anywhere in the process; REL-002 - Refresh Session <-> Retry anchor cycle has no decision guard; REL-004 - Element matched by Ordinal index instead of stable attributes; MNT-001 - Unreachable stage island (Legacy Adjustment -> Note); MNT-001 - Page is never referenced by any page-reference stage; MNT-003 - Near-duplicate of Ledger Terminal VBO (structure similarity > 0.85); MNT-003 - Near-duplicate of Ledger Terminal VBO (structure similarity > 0.85); MNT-004 - Monolith: >150 stages in process and >60 on Main Page - recommend dispatcher/performer split; CMP-001 - Collection with SSN field queued to unencrypted queue; CMP-002 - Process narrative/documentation is empty. The Monolith process deliberately has an empty narrative (CMP-002) - structural corpus checks must exempt it."
 }

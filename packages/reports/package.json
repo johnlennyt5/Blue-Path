@@ -12,9 +12,12 @@
   },
   "dependencies": {
     "@prismshift/ir": "workspace:*",
+    "@prismshift/rules": "workspace:*",
     "@prismshift/transformer": "workspace:*"
   },
   "devDependencies": {
+    "@prismshift/corpus": "workspace:*",
+    "@prismshift/parser": "workspace:*",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
   }

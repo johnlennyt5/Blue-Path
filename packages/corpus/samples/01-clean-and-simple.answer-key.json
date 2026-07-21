@@ -1,7 +1,7 @@
 {
   "id": "01-clean-and-simple",
   "file": "01-clean-and-simple.bprelease",
-  "description": "A small, well-built loan-payment process: validated inputs, a dedicated calculation subsheet, a deliberate business-exception path for invalid inputs, and Recover/Resume coverage on the main page. Contains zero planted issues — any finding reported against this sample is a false positive.",
+  "description": "A small, well-built loan-payment process: validated inputs, a dedicated calculation subsheet, a deliberate business-exception path for invalid inputs, and Recover/Resume coverage on the main page. Contains zero planted issues \u2014 any finding reported against this sample is a false positive.",
   "expectedParse": {
     "errors": 0,
     "warnings": 0,
@@ -17,11 +17,20 @@
     "processes": [
       {
         "name": "Loan Payment Calculator",
-        "pages": ["Main Page", "Calculate Payment"],
+        "pages": [
+          "Main Page",
+          "Calculate Payment"
+        ],
         "stageCount": 19,
         "dataItemCount": 9,
-        "startupParams": ["Principal", "Annual Rate", "Term Months"],
-        "outputs": ["Monthly Payment"],
+        "startupParams": [
+          "Principal",
+          "Annual Rate",
+          "Term Months"
+        ],
+        "outputs": [
+          "Monthly Payment"
+        ],
         "stageKinds": {
           "start": 2,
           "end": 2,
@@ -38,5 +47,32 @@
     "objects": []
   },
   "expectedFindings": [],
+  "expectedSummaries": [
+    {
+      "processName": "Loan Payment Calculator",
+      "applicationsTouched": [],
+      "objectsCalled": [],
+      "queuesUsed": [],
+      "inputs": [
+        "Principal",
+        "Annual Rate",
+        "Term Months"
+      ],
+      "outputs": [
+        "Monthly Payment"
+      ],
+      "hasRecovery": true,
+      "recoveryPages": [
+        "Main Page"
+      ],
+      "deliberateThrows": true,
+      "mainPageFirstSteps": [
+        "Run page \"Calculate Payment\"",
+        "Recover from exception",
+        "Resume normal flow"
+      ],
+      "sensitiveItems": []
+    }
+  ],
   "notes": "REL-001 exception coverage is satisfied by the main page's Recover/Resume pair: the subsheet's deliberate Exception stage propagates to the caller where it is recovered. The Exception stage itself is intentional validation behavior, not a defect."
 }

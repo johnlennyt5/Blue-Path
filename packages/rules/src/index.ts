@@ -34,6 +34,7 @@ export {
   scoreProcess,
 } from './scoring';
 export type { LetterGrade, QualityScore } from './scoring';
+export { SENSITIVE_NAME } from './helpers';
 export { SEC_RULES } from './security';
 export { REL_RULES } from './reliability';
 export { MNT_RULES, objectSimilarity } from './maintenance';

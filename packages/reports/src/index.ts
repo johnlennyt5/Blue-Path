@@ -1,7 +1,16 @@
 /**
- * @prismshift/reports — audit report + migration report generation.
- *
- * Scaffold placeholder: buildMigrationReport() lands in S5-5,
- * buildAuditReport() in S7-4 (ARCHITECTURE §2).
+ * @prismshift/reports — summaries, audit report + migration report
+ * generation (ARCHITECTURE §2, §6).
  */
 export const PACKAGE_NAME = '@prismshift/reports';
+
+export { buildRecommendations, recommendationCoverage } from './recommendations';
+export type { Recommendation } from './recommendations';
+export { stepSentence, summarizeObject, summarizeProcess } from './summary';
+export type {
+  ExceptionStrategy,
+  ObjectSummary,
+  PageOutline,
+  ProcessSummary,
+  SensitivityFlag,
+} from './summary';

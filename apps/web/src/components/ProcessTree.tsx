@@ -52,7 +52,7 @@ function PageBranch({ page }: { page: Page }) {
   );
 }
 
-function NodeBranch({
+export function NodeBranch({
   node,
   label,
 }: {

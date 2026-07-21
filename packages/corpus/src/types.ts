@@ -12,6 +12,8 @@ export interface AnswerKey {
   description: string;
   expectedParse: ExpectedParse;
   expectedFindings: ExpectedFinding[];
+  /** Present once a sample participates in summary-generator testing. */
+  expectedSummaries?: ExpectedSummary[];
   notes?: string;
 }
 
@@ -58,6 +60,25 @@ export interface ExpectedObjectStats {
   stageKinds: Record<string, number>;
   /** See ExpectedProcessStats.strayStageCount. Default 0. */
   strayStageCount?: number;
+}
+
+/** Ground truth for the deterministic summary generator (S3-3). */
+export interface ExpectedSummary {
+  processName: string;
+  applicationsTouched: string[];
+  objectsCalled: string[];
+  queuesUsed: string[];
+  /** Startup param names. */
+  inputs: string[];
+  /** Output param names. */
+  outputs: string[];
+  hasRecovery: boolean;
+  recoveryPages: string[];
+  deliberateThrows: boolean;
+  /** First steps of the main-page outline, matched exactly. */
+  mainPageFirstSteps: string[];
+  /** Sorted-unique names of sensitivity-flagged items/fields (S3-4). */
+  sensitiveItems: string[];
 }
 
 export interface ExpectedFinding {
