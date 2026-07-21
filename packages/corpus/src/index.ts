@@ -15,6 +15,8 @@ import type { AnswerKey } from './types';
 export const PACKAGE_NAME = '@prismshift/corpus';
 
 export type * from './types';
+export { diffFindings } from './harness';
+export type { FindingDiff, ResolvedFinding } from './harness';
 
 export interface CorpusSampleRef {
   id: string;

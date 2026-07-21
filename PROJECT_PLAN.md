@@ -11,7 +11,7 @@
 | Sprint | Status | Stories |
 |---|---|---|
 | S1 — "It Parses" | ✅ complete | 7/7 done |
-| S2 — "It Judges" | 🔄 in progress | 2/7 done |
+| S2 — "It Judges" | ✅ complete | 7/7 done |
 | S3 — "It Explains" | ⬜ | 0/5 |
 | S4 — "It Converts (Part 1)" | ⬜ | 0/5 |
 | S5 — "It Converts (Part 2)" | ⬜ | 0/6 |
@@ -21,6 +21,11 @@
 
 ### Completed log
 
+- **2026-07-20 — S2-7** Scoring + letter grades: §5.2 weights (critical 25 / high 10 / medium 4 / low 1 / info 0), floor 0, bands A≥90 … F<50; `scoreFindings`/`scoreProcess`/`scoreObject`. Golden per-corpus-file scores locked in tests: Loan Calculator 100/A · Dispatcher 74/C · Performer 100/A · Monolith **34/F** · VBO clones 96/A · Edge Gauntlet 100/A. **Sprint 2 complete** — 104 tests green monorepo-wide.
+- **2026-07-20 — S2-6** Maintainability + compliance rules: MNT-001 reachability (Start+Recover entry points; data/note/generic exempt) + orphaned-page detection (process-scope; object pages are external actions), MNT-002 unused-data-items via a full reference collector (Start/End/Code stages upgraded in IR+parser to carry param↔data-item bindings so page-parameter usage counts), MNT-003 near-duplicate objects via multiset-Jaccard structural similarity (>0.85; canonical-first so 3 clones → 2 findings), MNT-004 monolith thresholds, CMP-001 PII-fields-to-unencrypted-queue, CMP-002 missing narratives. **The corpus harness caught a real parser bug** (single-Calculation stages lost expression/storeIn because 'calculation' is array-parsed for multi-calc) — fixed + new corpus-wide payload-integrity invariant test. Full 14-rule catalog: 16/16 planted findings caught, zero false positives on all samples.
+- **2026-07-20 — S2-5** Reliability rules REL-001…004: process-level recovery-coverage check (risky-work gated), SCC-based unguarded-cycle detection (decision/choice/loop/wait count as guards; finding at earliest stage of the cycle; guarded performer cycle stays silent), wait-without-timeout, index-matched App Modeller elements (IrLocation gained optional elementId; harness resolves element names). 7 targeted cycle/coverage unit tests + corpus sweep now enforcing 8 rules — first-run clean on all samples.
+- **2026-07-20 — S2-4** Security rules SEC-001…004: keyword-gated + strength-checked credential-literal detection (bindings, calcs, data-item initial values), plaintext password startup params, sensitive-refs-into-log/alert detection (identifier names + SSN digit pattern), hardcoded environment values (UNC/URL/internal hostnames — release-level env vars correctly exempt). Shared IR-walking helpers (`helpers.ts`) + `diffFindings()` answer-key harness in @prismshift/corpus enforcing both directions (missed OR unexpected fails). All 4 samples: exact catches, zero false positives, first run.
+- **2026-07-20 — S2-3** Rules engine core (`@prismshift/rules`): `defineRule` (id-format validated) + `buildRuleset` (unique ids, frozen), `makeFinding` (meta-consistent, confidence clamped), `runRules(model, rules, config)` — per-rule timing, disabled-rules filter, severity overrides, crash isolation (a throwing rule is reported in `errors`, never aborts the run), deterministic finding order (severity → ruleId → location → insertion). 12 unit tests incl. purity-over-frozen-model and determinism.
 - **2026-07-20 — S2-2** Corpus sample #4 "Edge Cases": first sample expecting warnings > 0 (exactly 7, zero errors, zero findings). Nested subsheets (Main → Level One → Level Two), ChoiceStart/ChoiceEnd routing, unknown stage types ProcessInfo/SubSheetInfo → GenericStage with payload preserved, stray subsheetid attached to first page, ghost page reference left unresolved (parser now drops the dangling id, keeping validateModel clean), unknown data type → text, variable queue name, empty collectioninfo, plain-text code body, all six alt App Modeller modes + unknown "Mainframe" → Win32. Answer-key schema gained strayStageCount; corpus structural checks count strays instead of failing on them.
 - **2026-07-20 — S2-1** Corpus sample #3 "The Monolith": generated deterministically by `packages/corpus/scripts/generate-monolith.mjs` (script + output both committed; stats in the answer key are machine-computed so they can never drift). 201-stage "Customer Account Reconciliation" process (4 pages incl. an orphaned one, unguarded retry cycle, unreachable island, PII queue write, hardcoded UNC path, plaintext password param, empty narrative) + 3 near-duplicate "Ledger Terminal VBO" clones (one with an index-matched element). 13 planted findings — with sample #2, all 14 v1 rules now have ≥1 trigger. Parser handles all 264 stages with zero errors/warnings; corpus + parser answer-key tests extended (CMP-002-aware narrative checks, elementName finding locations).
 
@@ -76,11 +81,11 @@
 |---|---|---|---|
 | S2-1 | ✅ 2026-07-20 · Corpus sample #3 "The Monolith" (200+ stages, all planted issue types) + key | Every v1 rule has ≥ 1 planted trigger in the corpus overall | 5 |
 | S2-2 | ✅ 2026-07-20 · Corpus sample #4 "Edge Cases" (nested subsheets, alt app modes, odd-but-legal XML) + key | Parser emits warnings not errors; GenericStage fallback covered | 3 |
-| S2-3 | Rules engine core: registration, ruleset config, runner, Finding schema | Pure functions; runner returns findings + timing; unit-tested | 3 |
-| S2-4 | Security rules SEC-001…004 | Catch all planted security issues; zero false positives on sample #1 | 5 |
-| S2-5 | Reliability rules REL-001…004 | Same standard | 3 |
-| S2-6 | Maintainability + compliance rules MNT-001…004, CMP-001…002 | Same standard; near-duplicate detection tested on Monolith's 3 clones | 5 |
-| S2-7 | Scoring + letter grades | Matches §5.2 math; snapshot-tested per corpus file | 1 |
+| S2-3 | ✅ 2026-07-20 · Rules engine core: registration, ruleset config, runner, Finding schema | Pure functions; runner returns findings + timing; unit-tested | 3 |
+| S2-4 | ✅ 2026-07-20 · Security rules SEC-001…004 | Catch all planted security issues; zero false positives on sample #1 | 5 |
+| S2-5 | ✅ 2026-07-20 · Reliability rules REL-001…004 | Same standard | 3 |
+| S2-6 | ✅ 2026-07-20 · Maintainability + compliance rules MNT-001…004, CMP-001…002 | Same standard; near-duplicate detection tested on Monolith's 3 clones | 5 |
+| S2-7 | ✅ 2026-07-20 · Scoring + letter grades | Matches §5.2 math; snapshot-tested per corpus file | 1 |
 
 ---
 

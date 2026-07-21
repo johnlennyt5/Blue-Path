@@ -73,6 +73,30 @@ describe.each(SAMPLES)('parseBpRelease · corpus sample $id', (sampleRef) => {
     expect(validateModel(model)).toEqual([]);
   });
 
+  it('never loses stage payloads (calc/decision expressions present)', async () => {
+    const { xml } = await loadSample(sampleRef.id);
+    const { model } = await parseBpRelease(xml);
+    for (const node of [...model.processes, ...model.objects]) {
+      for (const page of node.pages) {
+        for (const stage of page.stages) {
+          if (stage.kind === 'calculation') {
+            expect(stage.expression.raw, `calc "${stage.name}" expression`).not.toBe('');
+            expect(stage.storeIn, `calc "${stage.name}" storeIn`).not.toBe('');
+          }
+          if (stage.kind === 'multiCalc') {
+            for (const step of stage.steps) {
+              expect(step.expression.raw).not.toBe('');
+              expect(step.storeIn).not.toBe('');
+            }
+          }
+          if (stage.kind === 'decision') {
+            expect(stage.expression.raw, `decision "${stage.name}" expression`).not.toBe('');
+          }
+        }
+      }
+    }
+  });
+
   it('is deterministic: identical input yields identical IR', async () => {
     const { xml } = await loadSample(sampleRef.id);
     const first = await parseBpRelease(xml);

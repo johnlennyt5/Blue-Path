@@ -160,6 +160,9 @@ importers:
         specifier: workspace:*
         version: link:../parser
     devDependencies:
+      '@prismshift/corpus':
+        specifier: workspace:*
+        version: link:../corpus
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
