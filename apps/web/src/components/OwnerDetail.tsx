@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import type { AutomationModel } from '@prismshift/ir';
 import { scoreObject, scoreProcess } from '@prismshift/rules';
 import type { Finding } from '@prismshift/ir';
+import { buildProcessExport, downloadBlob, projectZipBlob } from '../lib/exportProject';
 import { GRADE_COLORS } from '../lib/findingView';
+import { sanitizeFileName } from '@prismshift/transformer';
 import { useSession } from '../store/session';
 import type { DetailTab } from '../store/session';
 import { FindingsPanel } from './FindingsPanel';
@@ -28,6 +31,7 @@ export function OwnerDetail({
   const selection = useSession((s) => s.selection);
   const setTab = useSession((s) => s.setTab);
   const selectOwner = useSession((s) => s.selectOwner);
+  const [exportNote, setExportNote] = useState<string | null>(null);
 
   if (!selection) return null;
   const process = model.processes.find((p) => p.id === selection.ownerId);
@@ -61,6 +65,28 @@ export function OwnerDetail({
         <span className="text-xs text-slate-500">
           {ownerFindings.length} finding{ownerFindings.length === 1 ? '' : 's'}
         </span>
+        {process && (
+          <button
+            type="button"
+            onClick={() => {
+              const { project, conversion } = buildProcessExport(model, process);
+              void projectZipBlob(project).then((blob) => {
+                downloadBlob(blob, `${sanitizeFileName(process.name)}-UiPath.zip`);
+                setExportNote(
+                  `${conversion.coveragePct}% converted (${project.layout} layout)` +
+                    (conversion.punchList.length > 0
+                      ? ` · ${conversion.punchList.length} item(s) need manual work`
+                      : '') +
+                    ' · open project.json in UiPath Studio DESKTOP 2023.10+ (Studio Web/Maestro cannot load XAML projects)',
+                );
+              });
+            }}
+            className="ml-auto rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-sm text-sky-300 hover:bg-sky-500/20"
+          >
+            ⬇ Download UiPath project
+          </button>
+        )}
+        {exportNote && <span className="text-xs text-slate-400">{exportNote}</span>}
       </div>
 
       <div role="tablist" aria-label="Analysis views" className="mb-4 flex gap-1 border-b border-slate-800">

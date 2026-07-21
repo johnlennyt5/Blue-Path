@@ -1,0 +1,117 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`convertProcess · corpus #1 "Clean & Simple" > is deterministic and snapshot-locked > main-xaml 1`] = `
+"<?xml version="1.0" encoding="utf-8"?>
+<Activity mc:Ignorable="sap sap2010" x:Class="Main" xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation" xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation" xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=mscorlib" xmlns:sd="clr-namespace:System.Data;assembly=System.Data" xmlns:ui="http://schemas.uipath.com/workflow/activities" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="in_Principal" Type="InArgument(x:Double)" />
+    <x:Property Name="in_Annual_Rate" Type="InArgument(x:Double)" />
+    <x:Property Name="in_Term_Months" Type="InArgument(x:Double)" />
+    <x:Property Name="out_Monthly_Payment" Type="OutArgument(x:Double)" />
+  </x:Members>
+  <TextExpression.NamespacesForImplementation>
+    <sco:Collection x:TypeArguments="x:String">
+      <x:String>System</x:String>
+      <x:String>System.Collections.Generic</x:String>
+      <x:String>System.Data</x:String>
+    </sco:Collection>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <sco:Collection x:TypeArguments="AssemblyReference">
+      <AssemblyReference>mscorlib</AssemblyReference>
+      <AssemblyReference>System</AssemblyReference>
+      <AssemblyReference>System.Core</AssemblyReference>
+      <AssemblyReference>System.Data</AssemblyReference>
+    </sco:Collection>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence DisplayName="Main Page">
+    <TryCatch DisplayName="Main Page (BP Recover/Resume)">
+      <TryCatch.Try>
+        <Sequence DisplayName="Page flow">
+          <ui:InvokeWorkflowFile UnSafe="False" WorkflowFileName="Pages\\Calculate_Payment.xaml" DisplayName="Calculate Payment">
+            <ui:InvokeWorkflowFile.Arguments>
+              <InArgument x:TypeArguments="x:Double" x:Key="in_Principal">[in_Principal]</InArgument>
+              <InArgument x:TypeArguments="x:Double" x:Key="in_Annual_Rate">[in_Annual_Rate]</InArgument>
+              <InArgument x:TypeArguments="x:Double" x:Key="in_Term_Months">[in_Term_Months]</InArgument>
+              <OutArgument x:TypeArguments="x:Double" x:Key="out_Monthly_Payment">[out_Monthly_Payment]</OutArgument>
+            </ui:InvokeWorkflowFile.Arguments>
+          </ui:InvokeWorkflowFile>
+        </Sequence>
+      </TryCatch.Try>
+      <TryCatch.Catches>
+        <Catch x:TypeArguments="s:Exception">
+          <ActivityAction x:TypeArguments="s:Exception">
+            <ActivityAction.Argument>
+              <DelegateInArgument x:TypeArguments="s:Exception" Name="exception" />
+            </ActivityAction.Argument>
+            <Sequence DisplayName="Recovery">
+              <ui:Comment Text="BP Resume: normal flow resumes here." />
+            </Sequence>
+          </ActivityAction>
+        </Catch>
+      </TryCatch.Catches>
+    </TryCatch>
+  </Sequence>
+</Activity>
+"
+`;
+
+exports[`convertProcess · corpus #1 "Clean & Simple" > is deterministic and snapshot-locked > page-xaml 1`] = `
+"<?xml version="1.0" encoding="utf-8"?>
+<Activity mc:Ignorable="sap sap2010" x:Class="Calculate_Payment" xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:sap="http://schemas.microsoft.com/netfx/2009/xaml/activities/presentation" xmlns:sap2010="http://schemas.microsoft.com/netfx/2010/xaml/activities/presentation" xmlns:sco="clr-namespace:System.Collections.ObjectModel;assembly=mscorlib" xmlns:sd="clr-namespace:System.Data;assembly=System.Data" xmlns:ui="http://schemas.uipath.com/workflow/activities" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <x:Members>
+    <x:Property Name="in_Principal" Type="InArgument(x:Double)" />
+    <x:Property Name="in_Annual_Rate" Type="InArgument(x:Double)" />
+    <x:Property Name="in_Term_Months" Type="InArgument(x:Double)" />
+    <x:Property Name="out_Monthly_Payment" Type="OutArgument(x:Double)" />
+  </x:Members>
+  <TextExpression.NamespacesForImplementation>
+    <sco:Collection x:TypeArguments="x:String">
+      <x:String>System</x:String>
+      <x:String>System.Collections.Generic</x:String>
+      <x:String>System.Data</x:String>
+    </sco:Collection>
+  </TextExpression.NamespacesForImplementation>
+  <TextExpression.ReferencesForImplementation>
+    <sco:Collection x:TypeArguments="AssemblyReference">
+      <AssemblyReference>mscorlib</AssemblyReference>
+      <AssemblyReference>System</AssemblyReference>
+      <AssemblyReference>System.Core</AssemblyReference>
+      <AssemblyReference>System.Data</AssemblyReference>
+    </sco:Collection>
+  </TextExpression.ReferencesForImplementation>
+  <Sequence DisplayName="Calculate Payment">
+    <Sequence.Variables>
+      <Variable x:TypeArguments="x:Double" Name="Monthly_Rate" />
+    </Sequence.Variables>
+    <If Condition="[(in_Principal &gt; 0) AND (in_Term_Months &gt; 0)]" DisplayName="Valid Inputs?">
+      <If.Then>
+        <Sequence DisplayName="True">
+          <Assign DisplayName="Compute Payment: Monthly Rate">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:Double">[Monthly_Rate]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:Double">[in_Annual_Rate / 12 / 100]</InArgument>
+            </Assign.Value>
+          </Assign>
+          <Assign DisplayName="Compute Payment: Monthly Payment">
+            <Assign.To>
+              <OutArgument x:TypeArguments="x:Double">[out_Monthly_Payment]</OutArgument>
+            </Assign.To>
+            <Assign.Value>
+              <InArgument x:TypeArguments="x:Double">[(in_Principal + (in_Principal * Monthly_Rate * in_Term_Months)) / in_Term_Months]</InArgument>
+            </Assign.Value>
+          </Assign>
+        </Sequence>
+      </If.Then>
+      <If.Else>
+        <Sequence DisplayName="False">
+          <Throw DisplayName="Invalid Loan Inputs" Exception="[New UiPath.Core.BusinessRuleException(&quot;Principal and Term Months must be greater than zero&quot;)]" />
+        </Sequence>
+      </If.Else>
+    </If>
+  </Sequence>
+</Activity>
+"
+`;
