@@ -31,7 +31,7 @@
         </subsheet>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000006" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="30" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="SAP Password" narrative="Ledger terminal password" stage="SAP Password" />
             <input type="date" name="Run Date" narrative="" stage="Run Date" />
@@ -40,7 +40,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000007" name="Log In To Ledger" type="Action">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="60" />
+          <display x="15" y="90" />
           <resource object="Ledger Terminal VBO" action="Log In" />
           <inputs>
             <input type="text" name="Password" expr="[SAP Password]" />
@@ -50,7 +50,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000008" name="Read Ledger Export" type="Action">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="90" />
+          <display x="15" y="135" />
           <resource object="Ledger Terminal VBO" action="Read Ledger Export" />
           <inputs>
             <input type="text" name="Export Path" expr="[Export Path]" />
@@ -62,26 +62,26 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000009" name="For Each Customer" type="LoopStart">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="120" />
+          <display x="15" y="180" />
           <groupid>f3f3f3f3-0000-4000-9000-000000000062</groupid>
           <loopdata>Customer Records</loopdata>
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000010</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000010" name="Extract SSN" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="150" />
+          <display x="15" y="225" />
           <calculation expression="[Customer Records.SSN]" stage="Customer SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000011</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000011" name="Log Customer Detail" type="Alert">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="180" />
+          <display x="15" y="270" />
           <alert expression="&quot;Reconciling account &quot; &amp; [Customer Records.Account Number] &amp; &quot; SSN &quot; &amp; [Customer SSN] &amp; &quot; run &quot; &amp; [Run Date]" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000012</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000012" name="Validate Customer" type="SubSheet">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="210" />
+          <display x="15" y="315" />
           <processid>f3f3f3f3-0000-4000-9000-000000000003</processid>
           <inputs>
             <input type="text" name="Customer SSN" expr="[Customer SSN]" />
@@ -93,14 +93,14 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000013" name="Valid Record?" type="Decision">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="240" />
+          <display x="15" y="360" />
           <decision expression="[Is Valid]" />
           <ontrue>f3f3f3f3-0000-4000-9000-000000000014</ontrue>
           <onfalse>f3f3f3f3-0000-4000-9000-000000000015</onfalse>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000014" name="Update Ledger" type="SubSheet">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="270" />
+          <display x="15" y="405" />
           <processid>f3f3f3f3-0000-4000-9000-000000000004</processid>
           <inputs>
             <input type="text" name="Account Number" expr="[Customer Records.Account Number]" />
@@ -110,12 +110,12 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000015" name="Continue" type="Anchor">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="300" />
+          <display x="15" y="450" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000016</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000016" name="Queue Customer Record" type="Action">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="330" />
+          <display x="15" y="495" />
           <resource object="Work Queues" action="Add To Queue" />
           <inputs>
             <input type="text" name="Queue Name" expr="&quot;Reconciliation Queue&quot;" />
@@ -126,20 +126,20 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000017" name="Next Customer" type="LoopEnd">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="360" />
+          <display x="15" y="540" />
           <groupid>f3f3f3f3-0000-4000-9000-000000000062</groupid>
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000018</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000018" name="Session Expired?" type="Decision">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="390" />
+          <display x="15" y="585" />
           <decision expression="[Session Age] &gt; 30" />
           <ontrue>f3f3f3f3-0000-4000-9000-000000000019</ontrue>
           <onfalse>f3f3f3f3-0000-4000-9000-000000000021</onfalse>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000019" name="Refresh Session" type="Action">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="420" />
+          <display x="15" y="630" />
           <resource object="Ledger Terminal VBO" action="Refresh" />
           <inputs />
           <outputs />
@@ -147,279 +147,279 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000020" name="Retry" type="Anchor">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="450" />
+          <display x="15" y="675" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000019</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000021" name="Update Session Age" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="480" />
+          <display x="15" y="720" />
           <calculation expression="[Session Age] + 1" stage="Session Age" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000026</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000026" name="Compute Metric 1" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="510" />
+          <display x="15" y="765" />
           <calculation expression="[Session Age] + 1" stage="Metric 1" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000027</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000027" name="Compute Metric 2" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="540" />
+          <display x="15" y="810" />
           <calculation expression="[Metric 1] + 1" stage="Metric 2" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000028</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000028" name="Compute Metric 3" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="570" />
+          <display x="15" y="855" />
           <calculation expression="[Metric 2] + 1" stage="Metric 3" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000029</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000029" name="Compute Metric 4" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="600" />
+          <display x="15" y="900" />
           <calculation expression="[Metric 3] + 1" stage="Metric 4" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000030</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000030" name="Compute Metric 5" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="630" />
+          <display x="15" y="945" />
           <calculation expression="[Metric 4] + 1" stage="Metric 5" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000031</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000031" name="Compute Metric 6" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="660" />
+          <display x="15" y="990" />
           <calculation expression="[Metric 5] + 1" stage="Metric 6" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000032</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000032" name="Compute Metric 7" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="690" />
+          <display x="15" y="1035" />
           <calculation expression="[Metric 6] + 1" stage="Metric 7" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000033</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000033" name="Compute Metric 8" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="720" />
+          <display x="15" y="1080" />
           <calculation expression="[Metric 7] + 1" stage="Metric 8" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000034</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000034" name="Compute Metric 9" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="750" />
+          <display x="15" y="1125" />
           <calculation expression="[Metric 8] + 1" stage="Metric 9" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000035</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000035" name="Compute Metric 10" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="780" />
+          <display x="15" y="1170" />
           <calculation expression="[Metric 9] + 1" stage="Metric 10" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000036</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000036" name="Compute Metric 11" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="810" />
+          <display x="15" y="1215" />
           <calculation expression="[Metric 10] + 1" stage="Metric 11" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000037</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000037" name="Compute Metric 12" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="840" />
+          <display x="15" y="1260" />
           <calculation expression="[Metric 11] + 1" stage="Metric 12" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000038</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000038" name="Compute Metric 13" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="870" />
+          <display x="15" y="1305" />
           <calculation expression="[Metric 12] + 1" stage="Metric 13" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000039</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000039" name="Compute Metric 14" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="900" />
+          <display x="15" y="1350" />
           <calculation expression="[Metric 13] + 1" stage="Metric 14" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000040</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000040" name="Compute Metric 15" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="930" />
+          <display x="15" y="1395" />
           <calculation expression="[Metric 14] + 1" stage="Metric 15" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000041</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000041" name="Compute Metric 16" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="960" />
+          <display x="15" y="1440" />
           <calculation expression="[Metric 15] + 1" stage="Metric 16" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000042</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000042" name="Compute Metric 17" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="990" />
+          <display x="15" y="1485" />
           <calculation expression="[Metric 16] + 1" stage="Metric 17" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000043</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000043" name="Compute Metric 18" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1020" />
+          <display x="15" y="1530" />
           <calculation expression="[Metric 17] + 1" stage="Metric 18" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000044</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000044" name="Compute Metric 19" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1050" />
+          <display x="15" y="1575" />
           <calculation expression="[Metric 18] + 1" stage="Metric 19" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000045</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000045" name="Compute Metric 20" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1080" />
+          <display x="15" y="1620" />
           <calculation expression="[Metric 19] + 1" stage="Metric 20" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000046</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000046" name="Compute Metric 21" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1110" />
+          <display x="15" y="1665" />
           <calculation expression="[Metric 20] + 1" stage="Metric 21" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000047</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000047" name="Compute Metric 22" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1140" />
+          <display x="15" y="1710" />
           <calculation expression="[Metric 21] + 1" stage="Metric 22" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000048</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000048" name="Compute Metric 23" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1170" />
+          <display x="15" y="1755" />
           <calculation expression="[Metric 22] + 1" stage="Metric 23" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000049</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000049" name="Compute Metric 24" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1200" />
+          <display x="15" y="1800" />
           <calculation expression="[Metric 23] + 1" stage="Metric 24" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000050</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000050" name="Compute Metric 25" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1230" />
+          <display x="15" y="1845" />
           <calculation expression="[Metric 24] + 1" stage="Metric 25" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000051</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000051" name="Compute Metric 26" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1260" />
+          <display x="15" y="1890" />
           <calculation expression="[Metric 25] + 1" stage="Metric 26" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000052</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000052" name="Compute Metric 27" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1290" />
+          <display x="15" y="1935" />
           <calculation expression="[Metric 26] + 1" stage="Metric 27" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000053</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000053" name="Compute Metric 28" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1320" />
+          <display x="15" y="1980" />
           <calculation expression="[Metric 27] + 1" stage="Metric 28" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000054</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000054" name="Compute Metric 29" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1350" />
+          <display x="15" y="2025" />
           <calculation expression="[Metric 28] + 1" stage="Metric 29" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000055</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000055" name="Compute Metric 30" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1380" />
+          <display x="15" y="2070" />
           <calculation expression="[Metric 29] + 1" stage="Metric 30" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000056</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000056" name="Compute Metric 31" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1410" />
+          <display x="15" y="2115" />
           <calculation expression="[Metric 30] + 1" stage="Metric 31" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000057</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000057" name="Compute Metric 32" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1440" />
+          <display x="15" y="2160" />
           <calculation expression="[Metric 31] + 1" stage="Metric 32" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000058</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000058" name="Compute Metric 33" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1470" />
+          <display x="15" y="2205" />
           <calculation expression="[Metric 32] + 1" stage="Metric 33" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000059</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000059" name="Compute Metric 34" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1500" />
+          <display x="15" y="2250" />
           <calculation expression="[Metric 33] + 1" stage="Metric 34" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000060</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000060" name="Compute Metric 35" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1530" />
+          <display x="15" y="2295" />
           <calculation expression="[Metric 34] + 1" stage="Metric 35" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000061</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000061" name="Compute Metric 36" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1560" />
+          <display x="15" y="2340" />
           <calculation expression="[Metric 35] + 1" stage="Metric 36" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000022</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000022" name="Total Metrics" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1590" />
+          <display x="15" y="2385" />
           <calculation expression="[Metric 36] * 1" stage="Total Metrics" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000023</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000023" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1620" />
+          <display x="15" y="2430" />
           <outputs>
             <output type="number" name="Total Metrics" narrative="" stage="Total Metrics" />
           </outputs>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000024" name="Legacy Adjustment" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1650" />
+          <display x="15" y="2475" />
           <calculation expression="[Session Age] * 2" stage="Session Age" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000025</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000025" name="Retired logic kept for reference" type="Note">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1680" />
+          <display x="15" y="2520" />
           <narrative>Superseded in 2019; kept for audit.</narrative>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000063" name="SAP Password" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1710" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000064" name="Run Date" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1740" />
+          <display x="320" y="90" />
           <datatype>date</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000065" name="Export Path" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1770" />
+          <display x="320" y="135" />
           <datatype>text</datatype>
           <initialvalue>\\fs01\exports\ledger.csv</initialvalue>
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000066" name="Customer Records" type="Collection">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1800" />
+          <display x="320" y="180" />
           <collectioninfo>
             <field name="Account Number" type="text" />
             <field name="SSN" type="text" />
@@ -428,287 +428,287 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000067" name="Customer SSN" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1830" />
+          <display x="320" y="225" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000068" name="Is Valid" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1860" />
+          <display x="320" y="270" />
           <datatype>flag</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000069" name="Session Age" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1890" />
+          <display x="320" y="315" />
           <datatype>number</datatype>
           <initialvalue>0</initialvalue>
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000070" name="Total Metrics" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1920" />
+          <display x="320" y="360" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000071" name="Metric 1" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1950" />
+          <display x="320" y="405" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000072" name="Metric 2" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="1980" />
+          <display x="320" y="450" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000073" name="Metric 3" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2010" />
+          <display x="320" y="495" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000074" name="Metric 4" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2040" />
+          <display x="320" y="540" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000075" name="Metric 5" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2070" />
+          <display x="320" y="585" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000076" name="Metric 6" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2100" />
+          <display x="320" y="630" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000077" name="Metric 7" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2130" />
+          <display x="320" y="675" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000078" name="Metric 8" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2160" />
+          <display x="320" y="720" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000079" name="Metric 9" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2190" />
+          <display x="320" y="765" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000080" name="Metric 10" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2220" />
+          <display x="320" y="810" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000081" name="Metric 11" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2250" />
+          <display x="320" y="855" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000082" name="Metric 12" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2280" />
+          <display x="320" y="900" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000083" name="Metric 13" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2310" />
+          <display x="320" y="945" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000084" name="Metric 14" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2340" />
+          <display x="320" y="990" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000085" name="Metric 15" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2370" />
+          <display x="320" y="1035" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000086" name="Metric 16" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2400" />
+          <display x="320" y="1080" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000087" name="Metric 17" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2430" />
+          <display x="320" y="1125" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000088" name="Metric 18" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2460" />
+          <display x="320" y="1170" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000089" name="Metric 19" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2490" />
+          <display x="320" y="1215" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000090" name="Metric 20" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2520" />
+          <display x="320" y="1260" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000091" name="Metric 21" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2550" />
+          <display x="320" y="1305" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000092" name="Metric 22" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2580" />
+          <display x="320" y="1350" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000093" name="Metric 23" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2610" />
+          <display x="320" y="1395" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000094" name="Metric 24" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2640" />
+          <display x="320" y="1440" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000095" name="Metric 25" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2670" />
+          <display x="320" y="1485" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000096" name="Metric 26" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2700" />
+          <display x="320" y="1530" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000097" name="Metric 27" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2730" />
+          <display x="320" y="1575" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000098" name="Metric 28" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2760" />
+          <display x="320" y="1620" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000099" name="Metric 29" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2790" />
+          <display x="320" y="1665" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000100" name="Metric 30" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2820" />
+          <display x="320" y="1710" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000101" name="Metric 31" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2850" />
+          <display x="320" y="1755" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000102" name="Metric 32" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2880" />
+          <display x="320" y="1800" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000103" name="Metric 33" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2910" />
+          <display x="320" y="1845" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000104" name="Metric 34" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2940" />
+          <display x="320" y="1890" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000105" name="Metric 35" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="2970" />
+          <display x="320" y="1935" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000106" name="Metric 36" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000002</subsheetid>
-          <display x="15" y="3000" />
+          <display x="320" y="1980" />
           <datatype>number</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000107" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3030" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Customer SSN" narrative="" stage="Customer SSN" />
           </inputs>
@@ -716,294 +716,294 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000108" name="Copy SSN" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3060" />
+          <display x="15" y="90" />
           <calculation expression="[Customer SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000109</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000109" name="Normalise Pass 1" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3090" />
+          <display x="15" y="135" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000110</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000110" name="Normalise Pass 2" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3120" />
+          <display x="15" y="180" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000111</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000111" name="Normalise Pass 3" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3150" />
+          <display x="15" y="225" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000112</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000112" name="Normalise Pass 4" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3180" />
+          <display x="15" y="270" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000113</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000113" name="Normalise Pass 5" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3210" />
+          <display x="15" y="315" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000114</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000114" name="Normalise Pass 6" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3240" />
+          <display x="15" y="360" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000115</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000115" name="Normalise Pass 7" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3270" />
+          <display x="15" y="405" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000116</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000116" name="Normalise Pass 8" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3300" />
+          <display x="15" y="450" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000117</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000117" name="Normalise Pass 9" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3330" />
+          <display x="15" y="495" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000118</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000118" name="Normalise Pass 10" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3360" />
+          <display x="15" y="540" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000119</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000119" name="Normalise Pass 11" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3390" />
+          <display x="15" y="585" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000120</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000120" name="Normalise Pass 12" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3420" />
+          <display x="15" y="630" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000121</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000121" name="Normalise Pass 13" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3450" />
+          <display x="15" y="675" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000122</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000122" name="Normalise Pass 14" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3480" />
+          <display x="15" y="720" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000123</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000123" name="Normalise Pass 15" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3510" />
+          <display x="15" y="765" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000124</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000124" name="Normalise Pass 16" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3540" />
+          <display x="15" y="810" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000125</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000125" name="Normalise Pass 17" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3570" />
+          <display x="15" y="855" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000126</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000126" name="Normalise Pass 18" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3600" />
+          <display x="15" y="900" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000127</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000127" name="Normalise Pass 19" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3630" />
+          <display x="15" y="945" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000128</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000128" name="Normalise Pass 20" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3660" />
+          <display x="15" y="990" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000129</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000129" name="Normalise Pass 21" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3690" />
+          <display x="15" y="1035" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000130</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000130" name="Normalise Pass 22" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3720" />
+          <display x="15" y="1080" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000131</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000131" name="Normalise Pass 23" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3750" />
+          <display x="15" y="1125" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000132</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000132" name="Normalise Pass 24" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3780" />
+          <display x="15" y="1170" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000133</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000133" name="Normalise Pass 25" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3810" />
+          <display x="15" y="1215" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000134</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000134" name="Normalise Pass 26" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3840" />
+          <display x="15" y="1260" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000135</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000135" name="Normalise Pass 27" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3870" />
+          <display x="15" y="1305" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000136</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000136" name="Normalise Pass 28" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3900" />
+          <display x="15" y="1350" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000137</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000137" name="Normalise Pass 29" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3930" />
+          <display x="15" y="1395" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000138</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000138" name="Normalise Pass 30" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3960" />
+          <display x="15" y="1440" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000139</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000139" name="Normalise Pass 31" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="3990" />
+          <display x="15" y="1485" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000140</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000140" name="Normalise Pass 32" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4020" />
+          <display x="15" y="1530" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000141</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000141" name="Normalise Pass 33" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4050" />
+          <display x="15" y="1575" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000142</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000142" name="Normalise Pass 34" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4080" />
+          <display x="15" y="1620" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000143</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000143" name="Normalise Pass 35" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4110" />
+          <display x="15" y="1665" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000144</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000144" name="Normalise Pass 36" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4140" />
+          <display x="15" y="1710" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000145</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000145" name="Normalise Pass 37" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4170" />
+          <display x="15" y="1755" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000146</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000146" name="Normalise Pass 38" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4200" />
+          <display x="15" y="1800" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000147</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000147" name="Normalise Pass 39" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4230" />
+          <display x="15" y="1845" />
           <calculation expression="[Work SSN]" stage="Work SSN" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000148</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000148" name="SSN Well Formed?" type="Decision">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4260" />
+          <display x="15" y="1890" />
           <decision expression="Len([Work SSN]) = 11" />
           <ontrue>f3f3f3f3-0000-4000-9000-000000000149</ontrue>
           <onfalse>f3f3f3f3-0000-4000-9000-000000000150</onfalse>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000149" name="Set Valid" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4290" />
+          <display x="15" y="1935" />
           <calculation expression="True" stage="Is Valid Local" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000151</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000150" name="Set Invalid" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4320" />
+          <display x="15" y="1980" />
           <calculation expression="False" stage="Is Valid Local" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000151</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000151" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4350" />
+          <display x="15" y="2025" />
           <outputs>
             <output type="flag" name="Valid" narrative="" stage="Is Valid Local" />
           </outputs>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000152" name="Customer SSN" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4380" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000153" name="Work SSN" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4410" />
+          <display x="320" y="90" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000154" name="Is Valid Local" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000003</subsheetid>
-          <display x="15" y="4440" />
+          <display x="320" y="135" />
           <datatype>flag</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000155" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4470" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Account Number" narrative="" stage="Account Number" />
           </inputs>
@@ -1011,7 +1011,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000156" name="Post Adjustment" type="Action">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4500" />
+          <display x="15" y="90" />
           <resource object="Ledger Terminal VBO" action="Post Adjustment" />
           <inputs>
             <input type="text" name="Account Number" expr="[Account Number]" />
@@ -1021,307 +1021,307 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000157" name="Reconcile Step 1" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4530" />
+          <display x="15" y="135" />
           <calculation expression="[Account Number]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000158</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000158" name="Reconcile Step 2" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4560" />
+          <display x="15" y="180" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000159</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000159" name="Reconcile Step 3" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4590" />
+          <display x="15" y="225" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000160</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000160" name="Reconcile Step 4" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4620" />
+          <display x="15" y="270" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000161</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000161" name="Reconcile Step 5" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4650" />
+          <display x="15" y="315" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000162</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000162" name="Reconcile Step 6" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4680" />
+          <display x="15" y="360" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000163</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000163" name="Reconcile Step 7" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4710" />
+          <display x="15" y="405" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000164</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000164" name="Reconcile Step 8" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4740" />
+          <display x="15" y="450" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000165</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000165" name="Reconcile Step 9" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4770" />
+          <display x="15" y="495" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000166</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000166" name="Reconcile Step 10" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4800" />
+          <display x="15" y="540" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000167</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000167" name="Reconcile Step 11" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4830" />
+          <display x="15" y="585" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000168</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000168" name="Reconcile Step 12" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4860" />
+          <display x="15" y="630" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000169</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000169" name="Reconcile Step 13" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4890" />
+          <display x="15" y="675" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000170</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000170" name="Reconcile Step 14" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4920" />
+          <display x="15" y="720" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000171</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000171" name="Reconcile Step 15" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4950" />
+          <display x="15" y="765" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000172</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000172" name="Reconcile Step 16" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="4980" />
+          <display x="15" y="810" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000173</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000173" name="Reconcile Step 17" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5010" />
+          <display x="15" y="855" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000174</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000174" name="Reconcile Step 18" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5040" />
+          <display x="15" y="900" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000175</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000175" name="Reconcile Step 19" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5070" />
+          <display x="15" y="945" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000176</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000176" name="Reconcile Step 20" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5100" />
+          <display x="15" y="990" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000177</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000177" name="Reconcile Step 21" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5130" />
+          <display x="15" y="1035" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000178</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000178" name="Reconcile Step 22" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5160" />
+          <display x="15" y="1080" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000179</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000179" name="Reconcile Step 23" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5190" />
+          <display x="15" y="1125" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000180</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000180" name="Reconcile Step 24" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5220" />
+          <display x="15" y="1170" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000181</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000181" name="Reconcile Step 25" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5250" />
+          <display x="15" y="1215" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000182</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000182" name="Reconcile Step 26" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5280" />
+          <display x="15" y="1260" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000183</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000183" name="Reconcile Step 27" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5310" />
+          <display x="15" y="1305" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000184</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000184" name="Reconcile Step 28" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5340" />
+          <display x="15" y="1350" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000185</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000185" name="Reconcile Step 29" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5370" />
+          <display x="15" y="1395" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000186</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000186" name="Reconcile Step 30" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5400" />
+          <display x="15" y="1440" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000187</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000187" name="Reconcile Step 31" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5430" />
+          <display x="15" y="1485" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000188</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000188" name="Reconcile Step 32" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5460" />
+          <display x="15" y="1530" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000189</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000189" name="Reconcile Step 33" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5490" />
+          <display x="15" y="1575" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000190</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000190" name="Reconcile Step 34" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5520" />
+          <display x="15" y="1620" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000191</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000191" name="Reconcile Step 35" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5550" />
+          <display x="15" y="1665" />
           <calculation expression="[Ledger Temp]" stage="Ledger Temp" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000192</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000192" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5580" />
+          <display x="15" y="1710" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000193" name="Account Number" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5610" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000194" name="Ledger Temp" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000004</subsheetid>
-          <display x="15" y="5640" />
+          <display x="320" y="90" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000195" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5670" />
+          <display x="15" y="45" />
           <inputs />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000196</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000196" name="Utility Step 1" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5700" />
+          <display x="15" y="90" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000197</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000197" name="Utility Step 2" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5730" />
+          <display x="15" y="135" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000198</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000198" name="Utility Step 3" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5760" />
+          <display x="15" y="180" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000199</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000199" name="Utility Step 4" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5790" />
+          <display x="15" y="225" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000200</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000200" name="Utility Step 5" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5820" />
+          <display x="15" y="270" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000201</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000201" name="Utility Step 6" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5850" />
+          <display x="15" y="315" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000202</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000202" name="Utility Step 7" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5880" />
+          <display x="15" y="360" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000203</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000203" name="Utility Step 8" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5910" />
+          <display x="15" y="405" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000204</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000204" name="Utility Step 9" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5940" />
+          <display x="15" y="450" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000205</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000205" name="Utility Step 10" type="Calculation">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="5970" />
+          <display x="15" y="495" />
           <calculation expression="[Scratch] + 1" stage="Scratch" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000206</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000206" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="6000" />
+          <display x="15" y="540" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000207" name="Scratch" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000005</subsheetid>
-          <display x="15" y="6030" />
+          <display x="320" y="45" />
           <datatype>number</datatype>
           <initialvalue>0</initialvalue>
           <alwaysinit />
@@ -1367,7 +1367,7 @@
         </subsheet>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000212" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="30" />
+          <display x="15" y="45" />
           <inputs>
             <input type="password" name="Password" narrative="" stage="Password" />
           </inputs>
@@ -1375,7 +1375,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000213" name="Enter Credentials" type="Write">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="60" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000209" expr="[Password]" />
           </steps>
@@ -1383,7 +1383,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000214" name="Click Log In" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="90" />
+          <display x="15" y="135" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000209" action="Click" />
           </steps>
@@ -1391,7 +1391,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000215" name="Wait For Session" type="WaitStart">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="120" />
+          <display x="15" y="180" />
           <timeout>30</timeout>
           <choices>
             <choice name="Session Ready">
@@ -1404,29 +1404,29 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000216" name="Timed Out" type="WaitEnd">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="150" />
+          <display x="15" y="225" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000217</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000217" name="Login Timeout" type="Exception">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="180" />
+          <display x="15" y="270" />
           <exception type="System Exception" detail="&quot;Ledger session did not appear&quot;" />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000218" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="210" />
+          <display x="15" y="315" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000219" name="Password" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000211</subsheetid>
-          <display x="15" y="240" />
+          <display x="320" y="45" />
           <datatype>password</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000221" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000220</subsheetid>
-          <display x="15" y="270" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Export Path" narrative="" stage="Export Path" />
           </inputs>
@@ -1434,7 +1434,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000222" name="Read Export" type="Code">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000220</subsheetid>
-          <display x="15" y="300" />
+          <display x="15" y="90" />
           <inputs>
             <input type="text" name="Export Path" expr="[Export Path]" />
           </inputs>
@@ -1449,21 +1449,21 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000223" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000220</subsheetid>
-          <display x="15" y="330" />
+          <display x="15" y="135" />
           <outputs>
             <output type="collection" name="Rows" narrative="" stage="Ledger Rows" />
           </outputs>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000224" name="Export Path" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000220</subsheetid>
-          <display x="15" y="360" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000225" name="Ledger Rows" type="Collection">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000220</subsheetid>
-          <display x="15" y="390" />
+          <display x="320" y="90" />
           <collectioninfo>
             <field name="Account Number" type="text" />
             <field name="SSN" type="text" />
@@ -1472,7 +1472,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000227" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000226</subsheetid>
-          <display x="15" y="420" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Account Number" narrative="" stage="Account Number" />
           </inputs>
@@ -1480,7 +1480,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000228" name="Write Account Row" type="Write">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000226</subsheetid>
-          <display x="15" y="450" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000210" expr="[Account Number]" />
           </steps>
@@ -1488,7 +1488,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000229" name="Commit Row" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000226</subsheetid>
-          <display x="15" y="480" />
+          <display x="15" y="135" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000210" action="Click" />
           </steps>
@@ -1496,25 +1496,25 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000230" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000226</subsheetid>
-          <display x="15" y="510" />
+          <display x="15" y="180" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000231" name="Account Number" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000226</subsheetid>
-          <display x="15" y="540" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000233" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000232</subsheetid>
-          <display x="15" y="570" />
+          <display x="15" y="45" />
           <inputs />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000234</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000234" name="Refresh Session" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000232</subsheetid>
-          <display x="15" y="600" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000209" action="Click" />
           </steps>
@@ -1522,7 +1522,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000235" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000232</subsheetid>
-          <display x="15" y="630" />
+          <display x="15" y="135" />
           <outputs />
         </stage>
       </process>
@@ -1566,7 +1566,7 @@
         </subsheet>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000240" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="30" />
+          <display x="15" y="45" />
           <inputs>
             <input type="password" name="Password" narrative="" stage="Password" />
           </inputs>
@@ -1574,7 +1574,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000241" name="Enter Credentials" type="Write">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="60" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000237" expr="[Password]" />
           </steps>
@@ -1582,7 +1582,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000242" name="Click Log In" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="90" />
+          <display x="15" y="135" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000237" action="Click" />
           </steps>
@@ -1590,7 +1590,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000243" name="Wait For Session" type="WaitStart">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="120" />
+          <display x="15" y="180" />
           <timeout>30</timeout>
           <choices>
             <choice name="Session Ready">
@@ -1603,29 +1603,29 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000244" name="Timed Out" type="WaitEnd">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="150" />
+          <display x="15" y="225" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000245</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000245" name="Login Timeout" type="Exception">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="180" />
+          <display x="15" y="270" />
           <exception type="System Exception" detail="&quot;Ledger session did not appear&quot;" />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000246" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="210" />
+          <display x="15" y="315" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000247" name="Password" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000239</subsheetid>
-          <display x="15" y="240" />
+          <display x="320" y="45" />
           <datatype>password</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000249" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000248</subsheetid>
-          <display x="15" y="270" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Export Path" narrative="" stage="Export Path" />
           </inputs>
@@ -1633,7 +1633,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000250" name="Read Export" type="Code">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000248</subsheetid>
-          <display x="15" y="300" />
+          <display x="15" y="90" />
           <inputs>
             <input type="text" name="Export Path" expr="[Export Path]" />
           </inputs>
@@ -1648,21 +1648,21 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000251" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000248</subsheetid>
-          <display x="15" y="330" />
+          <display x="15" y="135" />
           <outputs>
             <output type="collection" name="Rows" narrative="" stage="Ledger Rows" />
           </outputs>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000252" name="Export Path" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000248</subsheetid>
-          <display x="15" y="360" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000253" name="Ledger Rows" type="Collection">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000248</subsheetid>
-          <display x="15" y="390" />
+          <display x="320" y="90" />
           <collectioninfo>
             <field name="Account Number" type="text" />
             <field name="SSN" type="text" />
@@ -1671,7 +1671,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000255" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000254</subsheetid>
-          <display x="15" y="420" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Account Number" narrative="" stage="Account Number" />
           </inputs>
@@ -1679,7 +1679,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000256" name="Write Account Row" type="Write">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000254</subsheetid>
-          <display x="15" y="450" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000238" expr="[Account Number]" />
           </steps>
@@ -1687,7 +1687,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000257" name="Commit Row" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000254</subsheetid>
-          <display x="15" y="480" />
+          <display x="15" y="135" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000238" action="Click" />
           </steps>
@@ -1695,25 +1695,25 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000258" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000254</subsheetid>
-          <display x="15" y="510" />
+          <display x="15" y="180" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000259" name="Account Number" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000254</subsheetid>
-          <display x="15" y="540" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000261" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000260</subsheetid>
-          <display x="15" y="570" />
+          <display x="15" y="45" />
           <inputs />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000262</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000262" name="Refresh Session" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000260</subsheetid>
-          <display x="15" y="600" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000237" action="Click" />
           </steps>
@@ -1721,7 +1721,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000263" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000260</subsheetid>
-          <display x="15" y="630" />
+          <display x="15" y="135" />
           <outputs />
         </stage>
       </process>
@@ -1765,7 +1765,7 @@
         </subsheet>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000268" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="30" />
+          <display x="15" y="45" />
           <inputs>
             <input type="password" name="Password" narrative="" stage="Password" />
           </inputs>
@@ -1773,7 +1773,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000269" name="Enter Credentials" type="Write">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="60" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000265" expr="[Password]" />
           </steps>
@@ -1781,7 +1781,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000270" name="Click Log In" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="90" />
+          <display x="15" y="135" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000265" action="Click" />
           </steps>
@@ -1789,7 +1789,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000271" name="Wait For Session" type="WaitStart">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="120" />
+          <display x="15" y="180" />
           <timeout>30</timeout>
           <choices>
             <choice name="Session Ready">
@@ -1802,29 +1802,29 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000272" name="Timed Out" type="WaitEnd">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="150" />
+          <display x="15" y="225" />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000273</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000273" name="Login Timeout" type="Exception">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="180" />
+          <display x="15" y="270" />
           <exception type="System Exception" detail="&quot;Ledger session did not appear&quot;" />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000274" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="210" />
+          <display x="15" y="315" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000275" name="Password" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000267</subsheetid>
-          <display x="15" y="240" />
+          <display x="320" y="45" />
           <datatype>password</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000277" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000276</subsheetid>
-          <display x="15" y="270" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Export Path" narrative="" stage="Export Path" />
           </inputs>
@@ -1832,7 +1832,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000278" name="Read Export" type="Code">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000276</subsheetid>
-          <display x="15" y="300" />
+          <display x="15" y="90" />
           <inputs>
             <input type="text" name="Export Path" expr="[Export Path]" />
           </inputs>
@@ -1847,21 +1847,21 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000279" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000276</subsheetid>
-          <display x="15" y="330" />
+          <display x="15" y="135" />
           <outputs>
             <output type="collection" name="Rows" narrative="" stage="Ledger Rows" />
           </outputs>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000280" name="Export Path" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000276</subsheetid>
-          <display x="15" y="360" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000281" name="Ledger Rows" type="Collection">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000276</subsheetid>
-          <display x="15" y="390" />
+          <display x="320" y="90" />
           <collectioninfo>
             <field name="Account Number" type="text" />
             <field name="SSN" type="text" />
@@ -1870,7 +1870,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000283" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000282</subsheetid>
-          <display x="15" y="420" />
+          <display x="15" y="45" />
           <inputs>
             <input type="text" name="Account Number" narrative="" stage="Account Number" />
           </inputs>
@@ -1878,7 +1878,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000284" name="Write Account Row" type="Write">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000282</subsheetid>
-          <display x="15" y="450" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000266" expr="[Account Number]" />
           </steps>
@@ -1886,7 +1886,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000285" name="Commit Row" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000282</subsheetid>
-          <display x="15" y="480" />
+          <display x="15" y="135" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000266" action="Click" />
           </steps>
@@ -1894,25 +1894,25 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000286" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000282</subsheetid>
-          <display x="15" y="510" />
+          <display x="15" y="180" />
           <outputs />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000287" name="Account Number" type="Data">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000282</subsheetid>
-          <display x="15" y="540" />
+          <display x="320" y="45" />
           <datatype>text</datatype>
           <initialvalue />
           <alwaysinit />
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000289" name="Start" type="Start">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000288</subsheetid>
-          <display x="15" y="570" />
+          <display x="15" y="45" />
           <inputs />
           <onsuccess>f3f3f3f3-0000-4000-9000-000000000290</onsuccess>
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000290" name="Refresh Session" type="Navigate">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000288</subsheetid>
-          <display x="15" y="600" />
+          <display x="15" y="90" />
           <steps>
             <step element="f3f3f3f3-0000-4000-9000-000000000265" action="Click" />
           </steps>
@@ -1920,7 +1920,7 @@
         </stage>
         <stage stageid="f3f3f3f3-0000-4000-9000-000000000291" name="End" type="End">
           <subsheetid>f3f3f3f3-0000-4000-9000-000000000288</subsheetid>
-          <display x="15" y="630" />
+          <display x="15" y="135" />
           <outputs />
         </stage>
       </process>

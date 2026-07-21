@@ -117,13 +117,18 @@ class Definition {
       lines.push('          <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>');
       lines.push('        </subsheet>');
     }
-    let y = 0;
+    // Flow stages go down the main column; data/collection stages sit in a
+    // side column so the flow view stays readable.
     for (const p of this.pages) {
+      let flowY = 0;
+      let dataY = 0;
       for (const s of p.stages) {
-        y += 30;
+        const isData = s.type === 'Data' || s.type === 'Collection';
+        const x = isData ? 320 : 15;
+        const y = isData ? (dataY += 45) : (flowY += 45);
         lines.push(`        <stage stageid="${s.id}" name="${esc(s.name)}" type="${s.type}">`);
         lines.push(`          <subsheetid>${p.id}</subsheetid>`);
-        lines.push(`          <display x="15" y="${y}" />`);
+        lines.push(`          <display x="${x}" y="${y}" />`);
         if (s.body) lines.push(s.body.replace(/^/gm, '          ').trimEnd());
         lines.push('        </stage>');
       }
@@ -530,6 +535,31 @@ const answerKey = {
     })),
   },
   expectedFindings: FINDINGS.map(({ note, ...finding }) => finding),
+  expectedSummaries: [
+    {
+      processName: monolith.name,
+      applicationsTouched: ['Ledger Terminal'],
+      objectsCalled: ['Ledger Terminal VBO'],
+      queuesUsed: ['Reconciliation Queue'],
+      inputs: ['SAP Password', 'Run Date'],
+      outputs: ['Total Metrics'],
+      hasRecovery: false,
+      recoveryPages: [],
+      deliberateThrows: false,
+      mainPageFirstSteps: [
+        'Call Ledger Terminal VBO › Log In',
+        'Call Ledger Terminal VBO › Read Ledger Export',
+        'For each row in Customer Records',
+      ],
+      sensitiveItems: [
+        'Account Number',
+        'Customer Records.Account Number',
+        'Customer Records.SSN',
+        'Customer SSN',
+        'Work SSN',
+      ],
+    },
+  ],
   notes:
     'Planted issues (12 findings): ' +
     FINDINGS.map((f) => `${f.ruleId} - ${f.note}`).join('; ') +

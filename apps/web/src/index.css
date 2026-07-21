@@ -1,1 +1,29 @@
 @import 'tailwindcss';
+
+/* Stage-flow edge palette (classes set in lib/flowGraph.ts) */
+.ps-edge-flow .react-flow__edge-path {
+  stroke: #475569;
+}
+.ps-edge-true .react-flow__edge-path {
+  stroke: #34d399;
+}
+.ps-edge-false .react-flow__edge-path {
+  stroke: #fb7185;
+}
+.ps-edge-choice .react-flow__edge-path {
+  stroke: #fbbf24;
+}
+.ps-edge-exception .react-flow__edge-path {
+  stroke: #f43f5e;
+  stroke-dasharray: 6 4;
+}
+.ps-edge-inferred .react-flow__edge-path {
+  opacity: 0.45;
+}
+.react-flow__edge-textbg {
+  fill: #020617;
+}
+.react-flow__edge-text {
+  fill: #94a3b8;
+  font-size: 10px;
+}

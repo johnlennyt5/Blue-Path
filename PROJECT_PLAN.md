@@ -12,7 +12,7 @@
 |---|---|---|
 | S1 — "It Parses" | ✅ complete | 7/7 done |
 | S2 — "It Judges" | ✅ complete | 7/7 done |
-| S3 — "It Explains" | ⬜ | 0/5 |
+| S3 — "It Explains" | ✅ complete | 5/5 done |
 | S4 — "It Converts (Part 1)" | ⬜ | 0/5 |
 | S5 — "It Converts (Part 2)" | ⬜ | 0/6 |
 | S6 — "Team Mode" | ⬜ | 0/7 |
@@ -20,6 +20,12 @@
 | S8 — "Ship It" | ⬜ | 0/6 |
 
 ### Completed log
+
+- **2026-07-20 — S3-5 follow-up (user review)** Recommendation engine extended to all 14 rules: SEC-001+SEC-002 merge into one Credential Manager recommendation; SEC-003 → mask PII in logs; SEC-004 → externalize config; CMP-001 → encrypt queues; CMP-002 → document. Every finding is now addressed by exactly one recommendation (`recommendationCoverage` proves it — "addressing all N findings" line in the tab). Recommendations and their rule badges wear the same severity colors as the Vulnerabilities tab, ordered by worst triggering severity.
+- **2026-07-20 — S3-4/S3-5** Sensitivity flags + Improvements tab — **Sprint 3 complete.** S3-4: `sensitivity` on every summary (SSN/account/card name patterns on items AND collection fields, plus password-typed items; single SENSITIVE_NAME definition shared from @prismshift/rules); `sensitiveItems` ground truth in all answer keys; rose PII/password badges in the Summary tab. S3-5: `buildRecommendations()` maps MNT/REL findings to 8 UiPath-practice recommendation templates (REFramework exceptions, RetryScope bounds, timeouts, stable selectors, dead-logic removal, data pruning, shared libraries, dispatcher/performer split) with rationale citing concrete stages, ordered by triggering severity; Improvements tab with empty state. 149 tests green.
+- **2026-07-20 — S3-3** Deterministic summary generator (`@prismshift/reports`): `summarizeProcess`/`summarizeObject` walk the IR to produce applications touched (resolved via called objects' App Modeller), objects called, queues used (dynamic queue names surfaced as "(dynamic)"), startup I/O, exception strategy (recovery pages + deliberate throws), and a page-by-page step outline via `stepSentence` (one deterministic sentence per flow-stage kind). Answer keys extended with `expectedSummaries` for all 4 samples (Monolith's emitted by the generator); 10 corpus-asserted tests incl. determinism. Web: Summary tab (now the default landing tab per §9 tab order) with description, fact chips, exception strategy, and collapsible step outlines. Also this story (from user review): directional arrowheads on all flow edges, color-matched per edge kind.
+- **2026-07-20 — S3-2** Flow visualization polish: inferred "on exception" edges (BP keeps recovery links implicit — the viz draws dashed, labeled, toggleable edges from risky stages to the page's Recover stage; presentation-layer only, never persisted to the IR so rules stay unaffected), smoothstep edge routing with a color-coded palette (flow/true/false/choice/exception CSS), minimap with kind-colored nodes, `onlyRenderVisibleElements` virtualization for the Monolith's 100-stage page, edge/node legend, and a corpus-generator layout fix (data items in a side column). **Fixed a real render bug**: custom nodes lacked React Flow `<Handle>`s so no edges drew at all — caught by screenshot verification, not by unit tests. 4 new inferred-edge unit tests; verified in-browser on samples #2 and #3.
+- **2026-07-20 — S3-1** Vulnerabilities tab + flow deep-links: session store now runs the full rule catalog after parse; landing shows graded owner cards (grade/score/finding counts); per-owner detail view with Vulnerabilities · Flow · Structure tabs. Findings list with severity filter chips (counts), location breadcrumbs, remediation, and "Show in flow →" deep-links that open the React Flow stage graph (@xyflow/react, BP diagram coordinates, kind-colored nodes, labeled True/False/choice edges, animated exception edges) with the target stage ring-highlighted and auto-centered. Pure `buildFlowGraph` unit-tested; 7 jsdom integration tests (drop → grade card → findings → filter toggle → deep-link); verified in a real browser via CDP on the Monolith (100-stage page renders, exactly 1 highlighted node) with screenshots.
 
 - **2026-07-20 — S2-7** Scoring + letter grades: §5.2 weights (critical 25 / high 10 / medium 4 / low 1 / info 0), floor 0, bands A≥90 … F<50; `scoreFindings`/`scoreProcess`/`scoreObject`. Golden per-corpus-file scores locked in tests: Loan Calculator 100/A · Dispatcher 74/C · Performer 100/A · Monolith **34/F** · VBO clones 96/A · Edge Gauntlet 100/A. **Sprint 2 complete** — 104 tests green monorepo-wide.
 - **2026-07-20 — S2-6** Maintainability + compliance rules: MNT-001 reachability (Start+Recover entry points; data/note/generic exempt) + orphaned-page detection (process-scope; object pages are external actions), MNT-002 unused-data-items via a full reference collector (Start/End/Code stages upgraded in IR+parser to carry param↔data-item bindings so page-parameter usage counts), MNT-003 near-duplicate objects via multiset-Jaccard structural similarity (>0.85; canonical-first so 3 clones → 2 findings), MNT-004 monolith thresholds, CMP-001 PII-fields-to-unencrypted-queue, CMP-002 missing narratives. **The corpus harness caught a real parser bug** (single-Calculation stages lost expression/storeIn because 'calculation' is array-parsed for multi-calc) — fixed + new corpus-wide payload-integrity invariant test. Full 14-rule catalog: 16/16 planted findings caught, zero false positives on all samples.
@@ -95,11 +101,11 @@
 
 | ID | Story | AC | Pts |
 |---|---|---|---|
-| S3-1 | Vulnerabilities tab: findings list with severity filters, deep-link to stage in flow view | Click finding → stage highlighted in rendered React Flow graph | 5 |
-| S3-2 | Stage flow visualization per page | Directed graph incl. exception edges; readable on Monolith (virtualized) | 5 |
-| S3-3 | Deterministic summary generator | Apps touched, queues, I/O, exception strategy, step outline — asserted against corpus keys | 5 |
-| S3-4 | Data-sensitivity flagging in summaries | SSN/account patterns in names flagged; appears in Summary tab | 2 |
-| S3-5 | Improvements tab: recommendation engine v1 | MNT/REL findings mapped to UiPath-practice recommendations with rationale | 3 |
+| S3-1 | ✅ 2026-07-20 · Vulnerabilities tab: findings list with severity filters, deep-link to stage in flow view | Click finding → stage highlighted in rendered React Flow graph | 5 |
+| S3-2 | ✅ 2026-07-20 · Stage flow visualization per page | Directed graph incl. exception edges; readable on Monolith (virtualized) | 5 |
+| S3-3 | ✅ 2026-07-20 · Deterministic summary generator | Apps touched, queues, I/O, exception strategy, step outline — asserted against corpus keys | 5 |
+| S3-4 | ✅ 2026-07-20 · Data-sensitivity flagging in summaries | SSN/account patterns in names flagged; appears in Summary tab | 2 |
+| S3-5 | ✅ 2026-07-20 · Improvements tab: recommendation engine v1 | MNT/REL findings mapped to UiPath-practice recommendations with rationale | 3 |
 
 ---
 

@@ -17,7 +17,9 @@
     "processes": [
       {
         "name": "Invoice Dispatcher",
-        "pages": ["Main Page"],
+        "pages": [
+          "Main Page"
+        ],
         "stageCount": 10,
         "dataItemCount": 2,
         "startupParams": [],
@@ -36,7 +38,10 @@
       },
       {
         "name": "Invoice Performer",
-        "pages": ["Main Page", "Process Item"],
+        "pages": [
+          "Main Page",
+          "Process Item"
+        ],
         "stageCount": 19,
         "dataItemCount": 4,
         "startupParams": [],
@@ -60,7 +65,10 @@
         "name": "Invoice Entry VBO",
         "applicationName": "Invoice Web App",
         "appElementCount": 4,
-        "pages": ["Get Pending Invoices", "Enter Invoice"],
+        "pages": [
+          "Get Pending Invoices",
+          "Enter Invoice"
+        ],
         "stageCount": 15,
         "dataItemCount": 5,
         "stageKinds": {
@@ -78,6 +86,59 @@
       }
     ]
   },
+  "expectedSummaries": [
+    {
+      "processName": "Invoice Dispatcher",
+      "applicationsTouched": [
+        "Invoice Web App"
+      ],
+      "objectsCalled": [
+        "Invoice Entry VBO"
+      ],
+      "queuesUsed": [
+        "Invoices Queue"
+      ],
+      "inputs": [],
+      "outputs": [],
+      "hasRecovery": true,
+      "recoveryPages": [
+        "Main Page"
+      ],
+      "deliberateThrows": false,
+      "mainPageFirstSteps": [
+        "Call Invoice Entry VBO \u203a Get Pending Invoices",
+        "For each row in New Invoices",
+        "Queue \"Invoices Queue\": Add To Queue"
+      ],
+      "sensitiveItems": []
+    },
+    {
+      "processName": "Invoice Performer",
+      "applicationsTouched": [
+        "Invoice Web App"
+      ],
+      "objectsCalled": [
+        "Invoice Entry VBO"
+      ],
+      "queuesUsed": [
+        "Invoices Queue"
+      ],
+      "inputs": [],
+      "outputs": [],
+      "hasRecovery": true,
+      "recoveryPages": [
+        "Main Page",
+        "Process Item"
+      ],
+      "deliberateThrows": false,
+      "mainPageFirstSteps": [
+        "Queue \"Invoices Queue\": Get Next Item",
+        "Decide: [Item ID] <> \"\"",
+        "Run page \"Process Item\""
+      ],
+      "sensitiveItems": []
+    }
+  ],
   "expectedFindings": [
     {
       "ruleId": "SEC-001",
@@ -101,5 +162,5 @@
       "stageName": "Temp Counter"
     }
   ],
-  "notes": "Planted issues: (1) SEC-001 — the literal \"ArchiveP@ss2024!\" is passed as the Archive Password input on 'Get Pending Invoices' instead of a Credential Manager lookup. (2) REL-003 — 'Wait For Confirmation' in the VBO's Enter Invoice page has an empty <timeout/>. (3) MNT-002 — data item 'Temp Counter' on the Dispatcher's Main Page is never referenced. Parser conventions this sample exercises: WaitEnd maps to IR kind 'anchor' (timeout continuation point); actions on object \"Work Queues\" are queue operations whose Queue Name literal becomes the IR queueName; the VBO's 'Invoice System URL' data item has exposure=Environment binding it to the release's environment variable. The performer's Get Next Item cycle is guarded by the 'Item Retrieved?' decision — it must NOT trigger REL-002."
+  "notes": "Planted issues: (1) SEC-001 \u2014 the literal \"ArchiveP@ss2024!\" is passed as the Archive Password input on 'Get Pending Invoices' instead of a Credential Manager lookup. (2) REL-003 \u2014 'Wait For Confirmation' in the VBO's Enter Invoice page has an empty <timeout/>. (3) MNT-002 \u2014 data item 'Temp Counter' on the Dispatcher's Main Page is never referenced. Parser conventions this sample exercises: WaitEnd maps to IR kind 'anchor' (timeout continuation point); actions on object \"Work Queues\" are queue operations whose Queue Name literal becomes the IR queueName; the VBO's 'Invoice System URL' data item has exposure=Environment binding it to the release's environment variable. The performer's Get Next Item cycle is guarded by the 'Item Retrieved?' decision \u2014 it must NOT trigger REL-002."
 }
