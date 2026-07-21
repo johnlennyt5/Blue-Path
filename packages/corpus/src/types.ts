@@ -41,6 +41,9 @@ export interface ExpectedProcessStats {
   outputs: string[];
   /** Count per IR stage kind; the sum must equal stageCount. */
   stageKinds: Record<string, number>;
+  /** Stages whose subsheetid points at a page not declared in the export
+   *  (parser attaches them to the first page with a warning). Default 0. */
+  strayStageCount?: number;
 }
 
 export interface ExpectedObjectStats {
@@ -53,6 +56,8 @@ export interface ExpectedObjectStats {
   dataItemCount: number;
   /** Count per IR stage kind; the sum must equal stageCount. */
   stageKinds: Record<string, number>;
+  /** See ExpectedProcessStats.strayStageCount. Default 0. */
+  strayStageCount?: number;
 }
 
 export interface ExpectedFinding {
@@ -66,4 +71,6 @@ export interface ExpectedFinding {
   pageName?: string;
   /** Stage name the finding must point at (omit for page/process-level findings). */
   stageName?: string;
+  /** App Modeller element the finding must point at (REL-004 style findings). */
+  elementName?: string;
 }

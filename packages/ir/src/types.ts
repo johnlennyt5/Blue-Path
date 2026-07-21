@@ -23,6 +23,8 @@ export interface IrLocation {
   objectId?: string;
   pageId?: string;
   stageId?: string;
+  /** App Modeller element (e.g. REL-004 selector findings). */
+  elementId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -237,18 +239,22 @@ export interface NoteStage extends StageBase {
 
 export interface StartStage extends StageBase {
   kind: 'start';
+  /** Page/process input params mapped into data items (paramName → storeIn). */
+  inputs?: OutputBinding[];
 }
 
 export interface EndStage extends StageBase {
   kind: 'end';
+  /** Page/process outputs sourced from data items (paramName ← storeIn). */
+  outputs?: OutputBinding[];
 }
 
 export interface CodeStage extends StageBase {
   kind: 'code';
   language: 'csharp' | 'vbnet' | 'jscript';
   body: string;
-  inputs: Param[];
-  outputs: Param[];
+  inputs: InputBinding[];
+  outputs: OutputBinding[];
 }
 
 export interface AnchorStage extends StageBase {

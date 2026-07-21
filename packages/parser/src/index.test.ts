@@ -43,7 +43,12 @@ describe.each(SAMPLES)('parseBpRelease · corpus sample $id', (sampleRef) => {
       expect(node.startupParams.map((p) => p.name)).toEqual(stats.startupParams);
       expect(node.outputs.map((p) => p.name)).toEqual(stats.outputs);
       expect(tallyKinds(node)).toEqual(stats.stageKinds);
-      expect(node.description, `${stats.name} keeps its narrative`).toBeTruthy();
+      const plantsCmp002 = answerKey.expectedFindings.some(
+        (f) => f.ruleId === 'CMP-002' && f.processName === stats.name,
+      );
+      if (!plantsCmp002) {
+        expect(node.description, `${stats.name} keeps its narrative`).toBeTruthy();
+      }
     }
 
     for (const [i, stats] of expected.objects.entries()) {
@@ -66,6 +71,30 @@ describe.each(SAMPLES)('parseBpRelease · corpus sample $id', (sampleRef) => {
     const { xml } = await loadSample(sampleRef.id);
     const { model } = await parseBpRelease(xml);
     expect(validateModel(model)).toEqual([]);
+  });
+
+  it('never loses stage payloads (calc/decision expressions present)', async () => {
+    const { xml } = await loadSample(sampleRef.id);
+    const { model } = await parseBpRelease(xml);
+    for (const node of [...model.processes, ...model.objects]) {
+      for (const page of node.pages) {
+        for (const stage of page.stages) {
+          if (stage.kind === 'calculation') {
+            expect(stage.expression.raw, `calc "${stage.name}" expression`).not.toBe('');
+            expect(stage.storeIn, `calc "${stage.name}" storeIn`).not.toBe('');
+          }
+          if (stage.kind === 'multiCalc') {
+            for (const step of stage.steps) {
+              expect(step.expression.raw).not.toBe('');
+              expect(step.storeIn).not.toBe('');
+            }
+          }
+          if (stage.kind === 'decision') {
+            expect(stage.expression.raw, `decision "${stage.name}" expression`).not.toBe('');
+          }
+        }
+      }
+    }
   });
 
   it('is deterministic: identical input yields identical IR', async () => {
@@ -130,6 +159,60 @@ describe('parseBpRelease · specific mappings (sample #2)', () => {
     // Environment exposure mapped
     const envItem = vbo.dataItems.find((d) => d.name === 'Invoice System URL');
     expect(envItem?.exposure).toBe('environment');
+  });
+});
+
+describe('parseBpRelease · specific mappings (sample #4)', () => {
+  it('handles every edge case without losing information', async () => {
+    const { xml } = await loadSample('04-edge-cases');
+    const { model, warnings, errors } = await parseBpRelease(xml);
+    expect(errors).toEqual([]);
+
+    const process = model.processes[0]!;
+    const allStages = process.pages.flatMap((p) => p.stages);
+
+    // Unknown stage types degrade to generic with payload preserved
+    const generics = allStages.filter((s) => s.kind === 'generic');
+    expect(generics.map((g) => (g.kind === 'generic' ? g.rawType : ''))).toEqual([
+      'ProcessInfo',
+      'SubSheetInfo',
+    ]);
+
+    // The stray data item lands on the first page (Main Page)
+    const mainPage = process.pages[0]!;
+    expect(mainPage.stages.some((s) => s.name === 'Drifted Item')).toBe(true);
+
+    // Ghost page reference stays unresolved but present
+    const ghost = allStages.find((s) => s.name === 'Ghost Page');
+    if (ghost?.kind !== 'subsheetRef') throw new Error('expected subsheetRef');
+    expect(ghost.targetPageId).toBeUndefined();
+    expect(ghost.targetPageName).toBe('');
+    expect(warnings.some((w) => w.message.includes('Ghost Page'))).toBe(true);
+
+    // Choice stage: two choices + labeled edges + otherwise flow edge
+    const route = allStages.find((s) => s.name === 'Route');
+    if (route?.kind !== 'choice') throw new Error('expected choice');
+    expect(route.choices.map((c) => c.name)).toEqual(['Path A', 'Path B']);
+    const levelOne = process.pages[1]!;
+    const routeEdges = levelOne.edges.filter((e) => e.from === route.id);
+    expect(routeEdges.map((e) => e.kind).sort()).toEqual(['choice', 'choice', 'flow']);
+
+    // Non-literal queue name: warned, no queueName tag
+    const queueAction = allStages.find((s) => s.name === 'Queue Audit Row');
+    if (queueAction?.kind !== 'action') throw new Error('expected action');
+    expect(queueAction.queueName).toBeUndefined();
+
+    // Unknown app mode falls back to Win32 with a warning
+    const vbo = model.objects[0]!;
+    const terminal = vbo.appModel?.elements.find((e) => e.name === 'Terminal Region');
+    expect(terminal?.mode).toBe('Win32');
+    expect(warnings.some((w) => w.message.includes('Mainframe'))).toBe(true);
+
+    // Plain-text (non-CDATA) code body survives
+    const code = vbo.pages.flatMap((p) => p.stages).find((s) => s.kind === 'code');
+    if (code?.kind !== 'code') throw new Error('expected code');
+    expect(code.language).toBe('csharp');
+    expect(code.body).toContain('Value.Length');
   });
 });
 

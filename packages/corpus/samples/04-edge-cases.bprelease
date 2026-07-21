@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PrismShift corpus sample #4: odd-but-legal XML. The parser must emit
+     warnings, never errors, and unknown stage types must degrade to
+     GenericStage with their payload preserved. -->
+<bpr:release xmlns:bpr="http://www.blueprism.co.uk/product/release">
+  <bpr:name>Edge Cases</bpr:name>
+  <bpr:release-notes>PrismShift corpus sample #4 - nested subsheets, alternative app modes, unknown stage types, stray references. Expects 7 parse warnings and zero errors/findings.</bpr:release-notes>
+  <bpr:created>2026-07-20 13:30:00Z</bpr:created>
+  <bpr:package-id>4</bpr:package-id>
+  <bpr:package-name>PrismShift Corpus</bpr:package-name>
+  <bpr:user-created-by>corpus-generator</bpr:user-created-by>
+  <bpr:contents count="3">
+
+    <process id="abcdabcd-0000-4000-9000-000000000001" name="Edge Case Gauntlet" xmlns="">
+      <process name="Edge Case Gauntlet" version="1.0" bpversion="6.10.1.12345" narrative="Exercises parser tolerance: nested page references, choice routing, info stages, stray page memberships, and variable queue names." byrefcollection="true">
+        <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>
+        <preconditions />
+        <endpoint narrative="" />
+        <subsheet subsheetid="abcdabcd-0000-4000-9000-00000000p001" type="MainPage" published="True">
+          <name>Main Page</name>
+          <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>
+        </subsheet>
+        <subsheet subsheetid="abcdabcd-0000-4000-9000-00000000p002" type="Normal" published="False">
+          <name>Level One</name>
+          <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>
+        </subsheet>
+        <subsheet subsheetid="abcdabcd-0000-4000-9000-00000000p003" type="Normal" published="False">
+          <name>Level Two</name>
+          <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>
+        </subsheet>
+
+        <!-- ============ Main Page ============ -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000101" name="Start" type="Start">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="15" y="-120" />
+          <inputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000102</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000102" name="Level One" type="SubSheet">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="15" y="-60" />
+          <processid>abcdabcd-0000-4000-9000-00000000p002</processid>
+          <inputs />
+          <outputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000103</onsuccess>
+        </stage>
+        <!-- references the stray data item so it is not "unused" -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000103" name="Touch Drifted" type="Calculation">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="15" y="0" />
+          <calculation expression="[Drifted Item] &amp; &quot;&quot;" stage="Result" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000104</onsuccess>
+        </stage>
+        <!-- variable queue name: legal, but the queue dependency cannot be resolved -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000104" name="Queue Audit Row" type="Action">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="15" y="60" />
+          <resource object="Work Queues" action="Add To Queue" />
+          <inputs>
+            <input type="text" name="Queue Name" expr="[Queue Target]" />
+            <input type="collection" name="Data" expr="[Audit Rows]" />
+          </inputs>
+          <outputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000106</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000105" name="Recover" type="Recover">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="165" y="0" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000107</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000106" name="End" type="End">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="15" y="120" />
+          <outputs />
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000107" name="Resume" type="Resume">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="165" y="60" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000106</onsuccess>
+        </stage>
+        <!-- unknown stage type: must become GenericStage + warning, not an error -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000108" name="About This Process" type="ProcessInfo">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="300" y="-120" />
+          <zoom-hint>42</zoom-hint>
+        </stage>
+        <!-- stray subsheetid: page was deleted; parser attaches to first page + warning -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000111" name="Drifted Item" type="Data">
+          <subsheetid>deaddead-0000-4000-9000-000000000000</subsheetid>
+          <display x="300" y="-60" />
+          <datatype>text</datatype>
+          <initialvalue>legacy</initialvalue>
+          <alwaysinit />
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000112" name="Queue Target" type="Data">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="300" y="0" />
+          <datatype>text</datatype>
+          <initialvalue>Edge Queue</initialvalue>
+          <alwaysinit />
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000113" name="Result" type="Data">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="300" y="60" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+        <!-- legal: a collection with no declared fields -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000114" name="Audit Rows" type="Collection">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p001</subsheetid>
+          <display x="300" y="120" />
+          <collectioninfo />
+        </stage>
+
+        <!-- ============ Level One ============ -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000201" name="Start" type="Start">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="15" y="-120" />
+          <inputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000202</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000202" name="Route" type="ChoiceStart">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="15" y="-60" />
+          <choices>
+            <choice name="Path A" expression="[Route Result] = &quot;A&quot;">
+              <onsuccess>abcdabcd-0000-4000-9000-000000000203</onsuccess>
+            </choice>
+            <choice name="Path B" expression="[Route Result] = &quot;B&quot;">
+              <onsuccess>abcdabcd-0000-4000-9000-000000000204</onsuccess>
+            </choice>
+          </choices>
+          <onsuccess>abcdabcd-0000-4000-9000-000000000205</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000203" name="Handle Path A" type="Calculation">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="-120" y="0" />
+          <calculation expression="&quot;A&quot;" stage="Route Result" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000206</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000204" name="Handle Path B" type="Calculation">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="15" y="0" />
+          <calculation expression="&quot;B&quot;" stage="Route Result" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000206</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000205" name="Handle Otherwise" type="Calculation">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="150" y="0" />
+          <calculation expression="&quot;?&quot;" stage="Route Result" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000206</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000206" name="Routes Join" type="ChoiceEnd">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="15" y="60" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000207</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000207" name="Level Two" type="SubSheet">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="15" y="120" />
+          <processid>abcdabcd-0000-4000-9000-00000000p003</processid>
+          <inputs />
+          <outputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000208</onsuccess>
+        </stage>
+        <!-- reference to a page that does not exist in this export -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000208" name="Ghost Page" type="SubSheet">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="15" y="180" />
+          <processid>99999999-0000-4000-9000-999999999999</processid>
+          <inputs />
+          <outputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000210</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000209" name="Page Docs" type="SubSheetInfo">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="300" y="-120" />
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000210" name="End" type="End">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="15" y="240" />
+          <outputs />
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000211" name="Route Result" type="Data">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p002</subsheetid>
+          <display x="300" y="-60" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+
+        <!-- ============ Level Two ============ -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000301" name="Start" type="Start">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p003</subsheetid>
+          <display x="15" y="-60" />
+          <inputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000302</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000302" name="Use Fancy Value" type="Calculation">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p003</subsheetid>
+          <display x="15" y="0" />
+          <calculation expression="[Fancy Value]" stage="Fancy Value" />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000303</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000303" name="End" type="End">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p003</subsheetid>
+          <display x="15" y="60" />
+          <outputs />
+        </stage>
+        <!-- unknown data type: warning, treated as text -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000311" name="Fancy Value" type="Data">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p003</subsheetid>
+          <display x="300" y="0" />
+          <datatype>fancytype</datatype>
+          <initialvalue>x</initialvalue>
+          <alwaysinit />
+        </stage>
+      </process>
+    </process>
+
+    <object id="abcdabcd-0000-4000-9000-000000000002" name="Multi Mode VBO" xmlns="">
+      <process name="Multi Mode VBO" type="object" version="1.0" bpversion="6.10.1.12345" narrative="Exercises every Application Modeller mode the transformer must handle, including one unknown mode." byrefcollection="true">
+        <appdef>
+          <application name="Green Screen Suite" mode="Java" />
+          <element id="abcdabcd-0000-4000-9000-00000000e001" name="Java Menu" mode="Java">
+            <attributes>
+              <attribute name="Name" matchtype="exact" enabled="true" value="mainMenu" />
+            </attributes>
+          </element>
+          <element id="abcdabcd-0000-4000-9000-00000000e002" name="SAP Field" mode="SAP">
+            <attributes>
+              <attribute name="Id" matchtype="exact" enabled="true" value="wnd[0]/usr/txtBSEG-SGTXT" />
+            </attributes>
+          </element>
+          <element id="abcdabcd-0000-4000-9000-00000000e003" name="Citrix Canvas" mode="Citrix">
+            <attributes>
+              <attribute name="WindowTitle" matchtype="wildcard" enabled="true" value="AS400*" />
+            </attributes>
+          </element>
+          <element id="abcdabcd-0000-4000-9000-00000000e004" name="Screen Region" mode="Region">
+            <attributes>
+              <attribute name="StartX" matchtype="exact" enabled="true" value="120" />
+              <attribute name="StartY" matchtype="exact" enabled="false" value="88" />
+            </attributes>
+          </element>
+          <element id="abcdabcd-0000-4000-9000-00000000e005" name="UIA Button" mode="UIA">
+            <attributes>
+              <attribute name="AutomationId" matchtype="exact" enabled="true" value="submitBtn" />
+            </attributes>
+          </element>
+          <!-- unknown mode: warning, treated as Win32 -->
+          <element id="abcdabcd-0000-4000-9000-00000000e006" name="Terminal Region" mode="Mainframe">
+            <attributes>
+              <attribute name="Row" matchtype="exact" enabled="true" value="12" />
+            </attributes>
+          </element>
+        </appdef>
+        <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>
+        <preconditions />
+        <endpoint narrative="" />
+        <subsheet subsheetid="abcdabcd-0000-4000-9000-00000000p004" type="Normal" published="True">
+          <name>Scrape Screen</name>
+          <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>
+        </subsheet>
+        <subsheet subsheetid="abcdabcd-0000-4000-9000-00000000p005" type="Normal" published="True">
+          <name>Legacy Calc</name>
+          <view><camerax>0</camerax><cameray>0</cameray><zoom>1</zoom></view>
+        </subsheet>
+
+        <stage stageid="abcdabcd-0000-4000-9000-000000000401" name="Start" type="Start">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p004</subsheetid>
+          <display x="15" y="-60" />
+          <inputs />
+          <onsuccess>abcdabcd-0000-4000-9000-000000000402</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000402" name="Read Screen Text" type="Read">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p004</subsheetid>
+          <display x="15" y="0" />
+          <steps>
+            <step element="abcdabcd-0000-4000-9000-00000000e004" action="ReadText" stage="Screen Text" />
+          </steps>
+          <onsuccess>abcdabcd-0000-4000-9000-000000000403</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000403" name="End" type="End">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p004</subsheetid>
+          <display x="15" y="60" />
+          <outputs>
+            <output type="text" name="Screen Text" narrative="" stage="Screen Text" />
+          </outputs>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000411" name="Screen Text" type="Data">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p004</subsheetid>
+          <display x="300" y="0" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+
+        <stage stageid="abcdabcd-0000-4000-9000-000000000501" name="Start" type="Start">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p005</subsheetid>
+          <display x="15" y="-60" />
+          <inputs>
+            <input type="text" name="Screen Text" narrative="" stage="Calc Out" />
+          </inputs>
+          <onsuccess>abcdabcd-0000-4000-9000-000000000502</onsuccess>
+        </stage>
+        <!-- legal: code body as plain element text, no CDATA wrapper -->
+        <stage stageid="abcdabcd-0000-4000-9000-000000000502" name="Legacy Length" type="Code">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p005</subsheetid>
+          <display x="15" y="0" />
+          <inputs>
+            <input type="text" name="Value" expr="[Calc Out]" />
+          </inputs>
+          <outputs>
+            <output type="text" name="Result" stage="Calc Out" />
+          </outputs>
+          <code language="csharp">Result = Value.Length.ToString();</code>
+          <onsuccess>abcdabcd-0000-4000-9000-000000000503</onsuccess>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000503" name="End" type="End">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p005</subsheetid>
+          <display x="15" y="60" />
+          <outputs>
+            <output type="text" name="Result" narrative="" stage="Calc Out" />
+          </outputs>
+        </stage>
+        <stage stageid="abcdabcd-0000-4000-9000-000000000511" name="Calc Out" type="Data">
+          <subsheetid>abcdabcd-0000-4000-9000-00000000p005</subsheetid>
+          <display x="300" y="0" />
+          <datatype>text</datatype>
+          <initialvalue />
+          <alwaysinit />
+        </stage>
+      </process>
+    </object>
+
+    <work-queue id="abcdabcd-0000-4000-9000-000000000003" name="Edge Queue" xmlns="">
+      <keyfield>Result</keyfield>
+      <maxattempts>1</maxattempts>
+      <encrypted>true</encrypted>
+    </work-queue>
+  </bpr:contents>
+</bpr:release>

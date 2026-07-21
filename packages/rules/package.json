@@ -8,13 +8,16 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "analyze": "tsx scripts/analyze.ts"
   },
   "dependencies": {
     "@prismshift/ir": "workspace:*",
     "@prismshift/parser": "workspace:*"
   },
   "devDependencies": {
+    "@prismshift/corpus": "workspace:*",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
   }

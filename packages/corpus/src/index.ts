@@ -15,6 +15,8 @@ import type { AnswerKey } from './types';
 export const PACKAGE_NAME = '@prismshift/corpus';
 
 export type * from './types';
+export { diffFindings } from './harness';
+export type { FindingDiff, ResolvedFinding } from './harness';
 
 export interface CorpusSampleRef {
   id: string;
@@ -25,6 +27,8 @@ export interface CorpusSampleRef {
 export const SAMPLES: CorpusSampleRef[] = [
   { id: '01-clean-and-simple', title: 'Clean & Simple' },
   { id: '02-realistic-mid-size', title: 'Realistic Mid-Size' },
+  { id: '03-the-monolith', title: 'The Monolith' },
+  { id: '04-edge-cases', title: 'Edge Cases' },
 ];
 
 export interface LoadedSample {

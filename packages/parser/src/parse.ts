@@ -140,6 +140,17 @@ function parseParams(container: unknown, tag: 'input' | 'output', direction: Par
   });
 }
 
+/** Start/End param ↔ data item bindings (`name` + `stage` attributes). */
+function parseParamBindings(container: unknown, tag: 'input' | 'output'): OutputBinding[] {
+  if (!isRecord(container)) return [];
+  return asArray(container[tag])
+    .map((entry) => {
+      const e = entry as Xml;
+      return { paramName: str(e['@_name']), storeIn: str(e['@_stage']) };
+    })
+    .filter((b) => b.storeIn !== '');
+}
+
 function parseInputBindings(container: unknown): InputBinding[] {
   if (!isRecord(container)) return [];
   return asArray(container['input']).map((entry) => {
@@ -196,10 +207,18 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
   link(edges, id, raw['ontimeout'], 'choice', 'Time Out');
 
   switch (type) {
-    case 'Start':
-      return { ...base, kind: 'start' };
-    case 'End':
-      return { ...base, kind: 'end' };
+    case 'Start': {
+      const bindings = parseParamBindings(raw['inputs'], 'input');
+      const stage: Stage = { ...base, kind: 'start' };
+      if (bindings.length > 0) stage.inputs = bindings;
+      return stage;
+    }
+    case 'End': {
+      const bindings = parseParamBindings(raw['outputs'], 'output');
+      const stage: Stage = { ...base, kind: 'end' };
+      if (bindings.length > 0) stage.outputs = bindings;
+      return stage;
+    }
     case 'Anchor':
       return { ...base, kind: 'anchor' };
     case 'Recover':
@@ -217,7 +236,9 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
       };
     }
     case 'Calculation': {
-      const calc = raw['calculation'];
+      // 'calculation' is array-parsed (multi-calc steps use the same tag),
+      // so a single Calculation stage's child arrives as a one-item array.
+      const calc = asArray(raw['calculation'])[0];
       return {
         ...base,
         kind: 'calculation',
@@ -326,7 +347,7 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
       const targetPageName = ctx.pageNameById.get(targetPageId);
       if (targetPageName === undefined) {
         warnings.push({
-          message: `Page reference "${name}" targets unknown page id "${targetPageId}"`,
+          message: `Page reference "${name}" targets unknown page id "${targetPageId}" — reference left unresolved`,
           path,
         });
       }
@@ -337,7 +358,11 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
         inputs: parseInputBindings(raw['inputs']),
         outputs: parseOutputBindings(raw['outputs']),
       };
-      if (targetPageId !== '') stage.targetPageId = targetPageId;
+      // Only keep the id when it resolves — a dangling id would make the
+      // model structurally unsound (validateModel) over a tolerated oddity.
+      if (targetPageId !== '' && targetPageName !== undefined) {
+        stage.targetPageId = targetPageId;
+      }
       return stage;
     }
     case 'Exception': {
@@ -425,8 +450,8 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
         kind: 'code',
         language: language === 'csharp' || language === 'jscript' ? language : 'vbnet',
         body: isRecord(code) ? str(code['#cdata']) || str(code['#text']) : '',
-        inputs: parseParams(raw['inputs'], 'input', 'in'),
-        outputs: parseParams(raw['outputs'], 'output', 'out'),
+        inputs: parseInputBindings(raw['inputs']),
+        outputs: parseOutputBindings(raw['outputs']),
       };
     }
     default:

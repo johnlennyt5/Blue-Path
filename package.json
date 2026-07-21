@@ -10,7 +10,8 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "turbo run test",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "analyze": "pnpm --filter @prismshift/rules run analyze"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
