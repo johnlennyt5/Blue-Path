@@ -35,6 +35,7 @@ function checkDefinition(
   wrapper: Xml,
   stats: ExpectedProcessStats | ExpectedObjectStats,
   bpVersion: string,
+  plantsMissingNarrative: boolean,
 ): Xml {
   expect(wrapper['@_name']).toBe(stats.name);
 
@@ -45,7 +46,9 @@ function checkDefinition(
   expect(definition['@_bpversion']).toBe(bpVersion);
   // Corpus processes/objects always document themselves unless the sample
   // deliberately plants CMP-002 (missing documentation).
-  expect(String(definition['@_narrative'] ?? '')).not.toBe('');
+  if (!plantsMissingNarrative) {
+    expect(String(definition['@_narrative'] ?? '')).not.toBe('');
+  }
 
   const subsheets = asArray(definition['subsheet']);
   expect(subsheets.map((s) => (s as Xml)['name'])).toEqual(stats.pages);
@@ -58,11 +61,10 @@ function checkDefinition(
   );
   expect(dataItemStages, `data item count for ${stats.name}`).toHaveLength(stats.dataItemCount);
 
-  // Every stage must sit on a declared page
+  // Every stage sits on a declared page, except the documented strays
   const subsheetIds = new Set(subsheets.map((s) => (s as Xml)['@_subsheetid']));
-  for (const stage of stages) {
-    expect(subsheetIds).toContain((stage as Xml)['subsheetid']);
-  }
+  const strays = stages.filter((s) => !subsheetIds.has((s as Xml)['subsheetid']));
+  expect(strays, `stray-page stages for ${stats.name}`).toHaveLength(stats.strayStageCount ?? 0);
 
   return definition;
 }
@@ -109,12 +111,17 @@ describe.each(SAMPLES)('corpus sample $id', (sampleRef) => {
     expect(asArray(contents?.['work-queue'])).toHaveLength(counts.workQueues);
     expect(asArray(contents?.['environment-variable'])).toHaveLength(counts.environmentVars);
 
+    const plantsCmp002 = (name: string) =>
+      answerKey.expectedFindings.some(
+        (f) => f.ruleId === 'CMP-002' && (f.processName === name || f.objectName === name),
+      );
+
     for (const [i, stats] of answerKey.expectedParse.processes.entries()) {
-      checkDefinition(processes[i] as Xml, stats, bpVersion);
+      checkDefinition(processes[i] as Xml, stats, bpVersion, plantsCmp002(stats.name));
     }
 
     for (const [i, stats] of answerKey.expectedParse.objects.entries()) {
-      const definition = checkDefinition(objects[i] as Xml, stats, bpVersion);
+      const definition = checkDefinition(objects[i] as Xml, stats, bpVersion, plantsCmp002(stats.name));
 
       const appdef = definition['appdef'] as Xml | undefined;
       expect(appdef, `appdef for ${stats.name}`).toBeDefined();

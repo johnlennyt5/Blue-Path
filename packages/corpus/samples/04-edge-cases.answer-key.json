@@ -1,0 +1,62 @@
+{
+  "id": "04-edge-cases",
+  "file": "04-edge-cases.bprelease",
+  "description": "Odd-but-legal exports: nested subsheets (Main → Level One → Level Two), choice routing, unknown stage types (ProcessInfo/SubSheetInfo), a stage whose page was deleted, a page reference to a nonexistent page, an unknown data type, a variable queue name, an empty collection definition, a plain-text code body, and all six alternative App Modeller modes plus one unknown mode. The parser must tolerate all of it: 7 warnings, 0 errors, nothing dropped silently.",
+  "expectedParse": {
+    "errors": 0,
+    "warnings": 7,
+    "bpVersion": "6.10.1.12345",
+    "packageName": "PrismShift Corpus",
+    "counts": {
+      "processes": 1,
+      "objects": 1,
+      "workQueues": 1,
+      "environmentVars": 0,
+      "credentialRefs": 0
+    },
+    "processes": [
+      {
+        "name": "Edge Case Gauntlet",
+        "pages": ["Main Page", "Level One", "Level Two"],
+        "stageCount": 27,
+        "dataItemCount": 6,
+        "startupParams": [],
+        "outputs": [],
+        "strayStageCount": 1,
+        "stageKinds": {
+          "start": 3,
+          "end": 3,
+          "subsheetRef": 3,
+          "calculation": 5,
+          "action": 1,
+          "recover": 1,
+          "resume": 1,
+          "generic": 2,
+          "choice": 1,
+          "anchor": 1,
+          "data": 5,
+          "collection": 1
+        }
+      }
+    ],
+    "objects": [
+      {
+        "name": "Multi Mode VBO",
+        "applicationName": "Green Screen Suite",
+        "appElementCount": 6,
+        "pages": ["Scrape Screen", "Legacy Calc"],
+        "stageCount": 8,
+        "dataItemCount": 2,
+        "stageKinds": {
+          "start": 2,
+          "end": 2,
+          "read": 1,
+          "code": 1,
+          "data": 2
+        }
+      }
+    ]
+  },
+  "expectedFindings": [],
+  "notes": "Expected warnings (7): unknown stage type ProcessInfo; stray subsheetid on data item 'Drifted Item' (attached to Main Page); non-literal Queue Name on 'Queue Audit Row'; unknown stage type SubSheetInfo; 'Ghost Page' reference to nonexistent page (left unresolved); unknown data type 'fancytype' (treated as text); unknown app element mode 'Mainframe' (treated as Win32). Zero findings expected: the process has Recover/Resume coverage, every data item is referenced, the queued collection has no PII fields, and warnings must never be double-reported as findings."
+}

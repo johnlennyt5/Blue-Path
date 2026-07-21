@@ -1,0 +1,210 @@
+{
+  "id": "03-the-monolith",
+  "file": "03-the-monolith.bprelease",
+  "description": "A 200+ stage reconciliation monolith with three near-duplicate VBO clones. Plants every v1 rule not covered by sample #2. The retry cycle is deliberately unguarded (REL-002); the performer cycle in sample #2 is the guarded negative case.",
+  "expectedParse": {
+    "errors": 0,
+    "warnings": 0,
+    "bpVersion": "6.10.1.12345",
+    "packageName": "PrismShift Corpus",
+    "counts": {
+      "processes": 1,
+      "objects": 3,
+      "workQueues": 1,
+      "environmentVars": 0,
+      "credentialRefs": 0
+    },
+    "processes": [
+      {
+        "name": "Customer Account Reconciliation",
+        "pages": [
+          "Main Page",
+          "Validate Customer",
+          "Update Ledger",
+          "Orphaned Utilities"
+        ],
+        "stageCount": 201,
+        "dataItemCount": 50,
+        "stageKinds": {
+          "start": 4,
+          "action": 5,
+          "loopStart": 1,
+          "calculation": 127,
+          "alert": 1,
+          "subsheetRef": 2,
+          "decision": 3,
+          "anchor": 2,
+          "loopEnd": 1,
+          "end": 4,
+          "note": 1,
+          "data": 49,
+          "collection": 1
+        },
+        "startupParams": [
+          "SAP Password",
+          "Run Date"
+        ],
+        "outputs": [
+          "Total Metrics"
+        ]
+      }
+    ],
+    "objects": [
+      {
+        "name": "Ledger Terminal VBO",
+        "applicationName": "Ledger Terminal",
+        "appElementCount": 2,
+        "pages": [
+          "Log In",
+          "Read Ledger Export",
+          "Post Adjustment",
+          "Refresh"
+        ],
+        "stageCount": 21,
+        "dataItemCount": 4,
+        "stageKinds": {
+          "start": 4,
+          "write": 2,
+          "navigate": 3,
+          "wait": 1,
+          "anchor": 1,
+          "exception": 1,
+          "end": 4,
+          "data": 3,
+          "code": 1,
+          "collection": 1
+        }
+      },
+      {
+        "name": "Ledger Terminal VBO v2",
+        "applicationName": "Ledger Terminal",
+        "appElementCount": 2,
+        "pages": [
+          "Log In",
+          "Read Ledger Export",
+          "Post Adjustment",
+          "Refresh"
+        ],
+        "stageCount": 21,
+        "dataItemCount": 4,
+        "stageKinds": {
+          "start": 4,
+          "write": 2,
+          "navigate": 3,
+          "wait": 1,
+          "anchor": 1,
+          "exception": 1,
+          "end": 4,
+          "data": 3,
+          "code": 1,
+          "collection": 1
+        }
+      },
+      {
+        "name": "Ledger Terminal VBO Copy",
+        "applicationName": "Ledger Terminal",
+        "appElementCount": 2,
+        "pages": [
+          "Log In",
+          "Read Ledger Export",
+          "Post Adjustment",
+          "Refresh"
+        ],
+        "stageCount": 21,
+        "dataItemCount": 4,
+        "stageKinds": {
+          "start": 4,
+          "write": 2,
+          "navigate": 3,
+          "wait": 1,
+          "anchor": 1,
+          "exception": 1,
+          "end": 4,
+          "data": 3,
+          "code": 1,
+          "collection": 1
+        }
+      }
+    ]
+  },
+  "expectedFindings": [
+    {
+      "ruleId": "SEC-002",
+      "severity": "high",
+      "processName": "Customer Account Reconciliation"
+    },
+    {
+      "ruleId": "SEC-003",
+      "severity": "high",
+      "processName": "Customer Account Reconciliation",
+      "pageName": "Main Page",
+      "stageName": "Log Customer Detail"
+    },
+    {
+      "ruleId": "SEC-004",
+      "severity": "medium",
+      "processName": "Customer Account Reconciliation",
+      "pageName": "Main Page",
+      "stageName": "Export Path"
+    },
+    {
+      "ruleId": "REL-001",
+      "severity": "high",
+      "processName": "Customer Account Reconciliation"
+    },
+    {
+      "ruleId": "REL-002",
+      "severity": "high",
+      "processName": "Customer Account Reconciliation",
+      "pageName": "Main Page",
+      "stageName": "Refresh Session"
+    },
+    {
+      "ruleId": "REL-004",
+      "severity": "medium",
+      "objectName": "Ledger Terminal VBO",
+      "elementName": "Grid Rows"
+    },
+    {
+      "ruleId": "MNT-001",
+      "severity": "medium",
+      "processName": "Customer Account Reconciliation",
+      "pageName": "Main Page",
+      "stageName": "Legacy Adjustment"
+    },
+    {
+      "ruleId": "MNT-001",
+      "severity": "medium",
+      "processName": "Customer Account Reconciliation",
+      "pageName": "Orphaned Utilities"
+    },
+    {
+      "ruleId": "MNT-003",
+      "severity": "medium",
+      "objectName": "Ledger Terminal VBO v2"
+    },
+    {
+      "ruleId": "MNT-003",
+      "severity": "medium",
+      "objectName": "Ledger Terminal VBO Copy"
+    },
+    {
+      "ruleId": "MNT-004",
+      "severity": "medium",
+      "processName": "Customer Account Reconciliation"
+    },
+    {
+      "ruleId": "CMP-001",
+      "severity": "high",
+      "processName": "Customer Account Reconciliation",
+      "pageName": "Main Page",
+      "stageName": "Queue Customer Record"
+    },
+    {
+      "ruleId": "CMP-002",
+      "severity": "info",
+      "processName": "Customer Account Reconciliation"
+    }
+  ],
+  "notes": "Planted issues (12 findings): SEC-002 - Startup parameter \"SAP Password\" is plain text instead of a Credential Manager lookup; SEC-003 - SSN flows into a log/alert stage; SEC-004 - Hardcoded UNC path in data item initial value; REL-001 - No Recover/Resume anywhere in the process; REL-002 - Refresh Session <-> Retry anchor cycle has no decision guard; REL-004 - Element matched by Ordinal index instead of stable attributes; MNT-001 - Unreachable stage island (Legacy Adjustment -> Note); MNT-001 - Page is never referenced by any page-reference stage; MNT-003 - Near-duplicate of Ledger Terminal VBO (structure similarity > 0.85); MNT-003 - Near-duplicate of Ledger Terminal VBO (structure similarity > 0.85); MNT-004 - Monolith: >150 stages in process and >60 on Main Page - recommend dispatcher/performer split; CMP-001 - Collection with SSN field queued to unencrypted queue; CMP-002 - Process narrative/documentation is empty. The Monolith process deliberately has an empty narrative (CMP-002) - structural corpus checks must exempt it."
+}

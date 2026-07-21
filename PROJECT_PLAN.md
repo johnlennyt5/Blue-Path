@@ -11,7 +11,7 @@
 | Sprint | Status | Stories |
 |---|---|---|
 | S1 — "It Parses" | ✅ complete | 7/7 done |
-| S2 — "It Judges" | ⬜ | 0/7 |
+| S2 — "It Judges" | 🔄 in progress | 2/7 done |
 | S3 — "It Explains" | ⬜ | 0/5 |
 | S4 — "It Converts (Part 1)" | ⬜ | 0/5 |
 | S5 — "It Converts (Part 2)" | ⬜ | 0/6 |
@@ -20,6 +20,9 @@
 | S8 — "Ship It" | ⬜ | 0/6 |
 
 ### Completed log
+
+- **2026-07-20 — S2-2** Corpus sample #4 "Edge Cases": first sample expecting warnings > 0 (exactly 7, zero errors, zero findings). Nested subsheets (Main → Level One → Level Two), ChoiceStart/ChoiceEnd routing, unknown stage types ProcessInfo/SubSheetInfo → GenericStage with payload preserved, stray subsheetid attached to first page, ghost page reference left unresolved (parser now drops the dangling id, keeping validateModel clean), unknown data type → text, variable queue name, empty collectioninfo, plain-text code body, all six alt App Modeller modes + unknown "Mainframe" → Win32. Answer-key schema gained strayStageCount; corpus structural checks count strays instead of failing on them.
+- **2026-07-20 — S2-1** Corpus sample #3 "The Monolith": generated deterministically by `packages/corpus/scripts/generate-monolith.mjs` (script + output both committed; stats in the answer key are machine-computed so they can never drift). 201-stage "Customer Account Reconciliation" process (4 pages incl. an orphaned one, unguarded retry cycle, unreachable island, PII queue write, hardcoded UNC path, plaintext password param, empty narrative) + 3 near-duplicate "Ledger Terminal VBO" clones (one with an index-matched element). 13 planted findings — with sample #2, all 14 v1 rules now have ≥1 trigger. Parser handles all 264 stages with zero errors/warnings; corpus + parser answer-key tests extended (CMP-002-aware narrative checks, elementName finding locations).
 
 - **2026-07-20 — S1-1** Monorepo foundation: pnpm/Turborepo workspace, TS strict, ESLint 9, Vitest, GitHub Actions CI; all 6 packages + web app scaffolded with the one-way dependency chain enforced; verified end-to-end on Windows PowerShell.
 - **2026-07-20 — S1-2** IR types + graph utilities: full ARCHITECTURE §3 type model (AutomationModel, 24-kind Stage union, expressions raw+AST, App Modeller, findings), `walkStages()`, `buildDependencyGraph()`, `validateModel()`; 12 unit tests incl. dedup, loop-pair, and dangling-edge cases.
@@ -71,8 +74,8 @@
 
 | ID | Story | AC | Pts |
 |---|---|---|---|
-| S2-1 | Corpus sample #3 "The Monolith" (200+ stages, all planted issue types) + key | Every v1 rule has ≥ 1 planted trigger in the corpus overall | 5 |
-| S2-2 | Corpus sample #4 "Edge Cases" (nested subsheets, alt app modes, odd-but-legal XML) + key | Parser emits warnings not errors; GenericStage fallback covered | 3 |
+| S2-1 | ✅ 2026-07-20 · Corpus sample #3 "The Monolith" (200+ stages, all planted issue types) + key | Every v1 rule has ≥ 1 planted trigger in the corpus overall | 5 |
+| S2-2 | ✅ 2026-07-20 · Corpus sample #4 "Edge Cases" (nested subsheets, alt app modes, odd-but-legal XML) + key | Parser emits warnings not errors; GenericStage fallback covered | 3 |
 | S2-3 | Rules engine core: registration, ruleset config, runner, Finding schema | Pure functions; runner returns findings + timing; unit-tested | 3 |
 | S2-4 | Security rules SEC-001…004 | Catch all planted security issues; zero false positives on sample #1 | 5 |
 | S2-5 | Reliability rules REL-001…004 | Same standard | 3 |

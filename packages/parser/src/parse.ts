@@ -326,7 +326,7 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
       const targetPageName = ctx.pageNameById.get(targetPageId);
       if (targetPageName === undefined) {
         warnings.push({
-          message: `Page reference "${name}" targets unknown page id "${targetPageId}"`,
+          message: `Page reference "${name}" targets unknown page id "${targetPageId}" — reference left unresolved`,
           path,
         });
       }
@@ -337,7 +337,11 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
         inputs: parseInputBindings(raw['inputs']),
         outputs: parseOutputBindings(raw['outputs']),
       };
-      if (targetPageId !== '') stage.targetPageId = targetPageId;
+      // Only keep the id when it resolves — a dangling id would make the
+      // model structurally unsound (validateModel) over a tolerated oddity.
+      if (targetPageId !== '' && targetPageName !== undefined) {
+        stage.targetPageId = targetPageId;
+      }
       return stage;
     }
     case 'Exception': {
