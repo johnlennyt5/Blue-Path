@@ -13,13 +13,19 @@
 | S1 — "It Parses" | ✅ complete | 7/7 done |
 | S2 — "It Judges" | ✅ complete | 7/7 done |
 | S3 — "It Explains" | ✅ complete | 5/5 done |
-| S4 — "It Converts (Part 1)" | ⬜ | 0/5 |
+| S4 — "It Converts (Part 1)" | ✅ complete | 5/5 done |
 | S5 — "It Converts (Part 2)" | ⬜ | 0/6 |
 | S6 — "Team Mode" | ⬜ | 0/7 |
 | S7 — "AI & Audit" | ⬜ | 0/5 |
 | S8 — "Ship It" | ⬜ | 0/6 |
 
 ### Completed log
+
+- **2026-07-21 — S4-5** ZIP export — **Sprint 4 complete.** `buildProcessExport` (convert → layout decision via queue-usage/stage-count → buildProject), `projectZipBlob` (JSZip, in-memory, DEFLATE), `downloadBlob` (object URL, revoked immediately — nothing over the network). "⬇ Download UiPath project" button on process detail with post-export coverage/layout note. Round-trip test: archive reopens with every file byte-identical; corpus #1 → plain layout, dispatcher → REFramework. Studio manual gate: user runs it at sprint-end testing.
+- **2026-07-21 — S4-4** Arguments formalized: two-pass conversion — every page's argument signature (in_/out_/io_ names + types) is computed first, then page-reference invokes bind against the CALLEE's signature so caller and callee can never disagree (mismatched params → punch entries). Same-item in+out page params merge into a single io_ InOut argument (InOutArgument added to the invoke emitter); page bodies read/write the argument directly, no shadow variables. `IdentifierAllocator` dedupes colliding sanitized names ("Grand Total" vs "Grand_Total" → Grand_Total / Grand_Total_2). Full 11-type BP→UiPath map table-tested. 15 new tests (42 in transformer).
+- **2026-07-21 — S4-3** Core stage mapping (`convertProcess`): control-flow structurizer reconstructs trees from page graphs — chain walking, decision→If with join detection (reachability intersection), choice→nested Ifs with otherwise, loopStart/End→ForEachRow via pairId, anchors pass through, cycles flagged; calc/multi-calc→Assign(s), subsheetRef→InvokeWorkflowFile (`Pages\*.xaml`), Exception→Throw (BusinessRuleException for BP business types), Note→Comment, page Recover/Resume→page-level TryCatch skeleton. Start/End param bindings become in_/out_ arguments REPLACING their backing data items; remaining items → typed variables (BP→UiPath type map). Minimal `[ref]`→identifier expression bridging (full translator is S5-1; dot-refs and unknowns flagged, never silent). Coverage %, punch list with reasons. **Corpus #1: 100%, empty punch list**; dispatcher: 80% with both action stages punch-listed. 8 tests incl. snapshots.
+- **2026-07-21 — S4-2** Project emitter: `buildProjectJson` (Studio 2023.10, targetFramework Windows/.NET 6, VB expressions, schemaVersion 4.0, pinned System+UIAutomation 23.10 deps, deterministic projectId/entry-point GUIDs — FNV-based, no randomness); `decideProjectLayout` (queues ⇒ REFramework; stage threshold default 60, configurable); `buildProject` assembling plain (Main + Pages/*) or REFramework layouts (sequence-based v1 scaffold: Main with Init→GetTransactionData→Process→SetTransactionStatus transaction guard incl. BusinessRuleException/SystemException catches; Framework/*.xaml with standard REFramework arguments; queue wiring deferred to S5-2, Config.xlsx to the migration report). 10 tests; Studio manual gate queued for first ZIP (S4-5).
+- **2026-07-21 — S4-1** XAML template layer (`@prismshift/transformer`): typed `XActivity` model (sequence with scoped variables, assign, if, forEachRow, tryCatch with Exception/BusinessRuleException catches + finally, invokeWorkflowFile with argument bindings, writeLine, comment) → `emitWorkflowXaml()` producing complete UiPath documents (x:Class, x:Members arguments as In/Out/InOutArgument, TextExpression namespaces/references, full xmlns set, CRLF). VB expressions bracket-wrapped and XML-escaped; the module is the only place XAML text is produced. 8 tests: file snapshot, XMLValidator well-formedness, document-shape assertions, escaping round-trip, determinism.
 
 - **2026-07-20 — S3-5 follow-up (user review)** Recommendation engine extended to all 14 rules: SEC-001+SEC-002 merge into one Credential Manager recommendation; SEC-003 → mask PII in logs; SEC-004 → externalize config; CMP-001 → encrypt queues; CMP-002 → document. Every finding is now addressed by exactly one recommendation (`recommendationCoverage` proves it — "addressing all N findings" line in the tab). Recommendations and their rule badges wear the same severity colors as the Vulnerabilities tab, ordered by worst triggering severity.
 - **2026-07-20 — S3-4/S3-5** Sensitivity flags + Improvements tab — **Sprint 3 complete.** S3-4: `sensitivity` on every summary (SSN/account/card name patterns on items AND collection fields, plus password-typed items; single SENSITIVE_NAME definition shared from @prismshift/rules); `sensitiveItems` ground truth in all answer keys; rose PII/password badges in the Summary tab. S3-5: `buildRecommendations()` maps MNT/REL findings to 8 UiPath-practice recommendation templates (REFramework exceptions, RetryScope bounds, timeouts, stable selectors, dead-logic removal, data pruning, shared libraries, dispatcher/performer split) with rationale citing concrete stages, ordered by triggering severity; Improvements tab with empty state. 149 tests green.
@@ -115,11 +121,11 @@
 
 | ID | Story | AC | Pts |
 |---|---|---|---|
-| S4-1 | XAML template layer (typed emitters for Sequence, Assign, If, ForEach, TryCatch, InvokeWorkflow) | Emitted XAML schema-valid; snapshot tests | 5 |
-| S4-2 | project.json + folder layout emitter (plain + REFramework threshold logic) | Studio 2023.10 opens output without repair prompts (manual gate) | 3 |
-| S4-3 | Core stage mapping: calc/multi-calc/decision/choice/loop/data/collection/subsheet | Corpus #1 converts 100%; mapping unit tests | 5 |
-| S4-4 | Variables/arguments mapping incl. scoping + `in_`/`out_` conventions | Types mapped (BP text/number/flag/date/collection → String/Double/Boolean/DateTime/DataTable) | 3 |
-| S4-5 | ZIP export (JSZip) client-side | One click → valid archive; nothing sent over network | 2 |
+| S4-1 | ✅ 2026-07-21 · XAML template layer (typed emitters for Sequence, Assign, If, ForEach, TryCatch, InvokeWorkflow) | Emitted XAML schema-valid; snapshot tests | 5 |
+| S4-2 | ✅ 2026-07-21 · project.json + folder layout emitter (plain + REFramework threshold logic) | Studio 2023.10 opens output without repair prompts (manual gate — pending first ZIP in S4-5) | 3 |
+| S4-3 | ✅ 2026-07-21 · Core stage mapping: calc/multi-calc/decision/choice/loop/data/collection/subsheet | Corpus #1 converts 100%; mapping unit tests | 5 |
+| S4-4 | ✅ 2026-07-21 · Variables/arguments mapping incl. scoping + `in_`/`out_` conventions | Types mapped (BP text/number/flag/date/collection → String/Double/Boolean/DateTime/DataTable) | 3 |
+| S4-5 | ✅ 2026-07-21 · ZIP export (JSZip) client-side | One click → valid archive; nothing sent over network | 2 |
 
 ---
 

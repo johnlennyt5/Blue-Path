@@ -15,6 +15,9 @@
     "@prismshift/rules": "workspace:*"
   },
   "devDependencies": {
+    "@prismshift/corpus": "workspace:*",
+    "@prismshift/parser": "workspace:*",
+    "fast-xml-parser": "^4.5.0",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
   }
