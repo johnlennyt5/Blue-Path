@@ -353,6 +353,114 @@ export function WorkspacePanel({ onClose }: { onClose: () => void }) {
                 </span>
               </div>
 
+              {(store.workspaces.find((w) => w.id === store.activeWorkspaceId)
+                ?.artifactStorageEnabled ?? false) && (
+                <div className="mt-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3">
+                  <h5 className="mb-2 text-xs font-semibold uppercase tracking-wide text-violet-300">
+                    Encrypted artifact vault
+                  </h5>
+                  {store.artifactKey === null ? (
+                    <div className="space-y-2 text-sm">
+                      <p className="text-xs text-amber-300">
+                        No artifact key in this browser. Generate one (admins, first time) or
+                        paste the workspace's key. <strong>Losing the key loses the
+                        artifacts — PrismShift never stores it.</strong>
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {can.editWorkspaceSettings(role) && (
+                          <button
+                            type="button"
+                            onClick={() => void store.generateArtifactKey()}
+                            className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-500/20"
+                          >
+                            Generate key
+                          </button>
+                        )}
+                        <input
+                          aria-label="Import artifact key"
+                          placeholder="paste key (base64)"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              store.importArtifactKeyString((e.target as HTMLInputElement).value);
+                            }
+                          }}
+                          className="w-64 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-600"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <span>Key loaded (browser-local).</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(store.artifactKey ?? '');
+                          }}
+                          className="rounded border border-slate-700 px-2 py-0.5 text-slate-300 hover:border-slate-500"
+                        >
+                          Copy key for teammates
+                        </button>
+                        <span className="text-amber-300/80">
+                          Key loss = artifact loss. Store it in your team's password manager.
+                        </span>
+                      </div>
+                      {can.syncAnalyses(role) && (
+                        <button
+                          type="button"
+                          disabled={store.busy}
+                          onClick={() => void store.storeReleaseArtifact()}
+                          className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-500/20 disabled:opacity-50"
+                        >
+                          🔒 Store loaded release (encrypted)
+                        </button>
+                      )}
+                      <ul className="space-y-1">
+                        {store.artifacts.map((artifact) => (
+                          <li
+                            key={artifact.id}
+                            className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-1.5 text-sm"
+                          >
+                            <span className="font-mono text-slate-200">{artifact.name}</span>
+                            <span className="text-xs text-slate-500">
+                              {(artifact.sizeBytes / 1024).toFixed(1)} KB ·{' '}
+                              {new Date(artifact.uploadedAt).toLocaleString()}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void store.fetchArtifact(artifact.id).then((result) => {
+                                  if (result === null) return;
+                                  const blob = new Blob([result.plaintext as BlobPart]);
+                                  const url = URL.createObjectURL(blob);
+                                  const anchor = document.createElement('a');
+                                  anchor.href = url;
+                                  anchor.download = result.name;
+                                  anchor.click();
+                                  URL.revokeObjectURL(url);
+                                });
+                              }}
+                              className="ml-auto text-xs text-sky-300 hover:text-sky-200"
+                            >
+                              decrypt & download
+                            </button>
+                            {can.editWorkspaceSettings(role) && (
+                              <button
+                                type="button"
+                                onClick={() => void store.deleteArtifact(artifact.id)}
+                                className="text-xs text-rose-400 hover:text-rose-300"
+                              >
+                                delete
+                              </button>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
                 <label className="flex items-center gap-2 text-slate-300">
                   Audit retention

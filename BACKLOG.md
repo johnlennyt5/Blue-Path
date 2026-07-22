@@ -11,11 +11,12 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 
 ## A. Product features (post-v1, from the original plan)
 
-### BL-001 · Encrypted artifact storage
+### BL-001 · Encrypted artifact storage — ✅ done (2026-07-22, backlog-encrypted-artifacts)
 - **Origin:** ARCHITECTURE §1.1/§11 invariant; PROJECT_PLAN post-v1 list. The `workspaces.artifact_storage_enabled` flag exists in the Sprint-6 schema but the feature is flag-only.
 - **Context:** Workspace Mode syncs metadata only. Some teams will want the raw `.bprelease`/generated XAML stored centrally for audit.
 - **Expected behavior:** When a workspace admin enables the flag, artifacts are encrypted **client-side with AES-GCM before upload** (Web Crypto), keys generated and held by the workspace (never sent to Supabase); storage via Supabase Storage; download+decrypt round-trip in the browser. Key loss = artifact loss, stated explicitly in the UI.
 - **Acceptance:** Network inspector shows only ciphertext leaving the browser; a pgTAP/RLS test proves cross-workspace isolation of artifact rows; decrypt round-trip test; admin-only toggle audited in `audit_events`.
+- **Done (2026-07-22):** Migration `20260723000000_encrypted_artifacts.sql`: `artifacts` metadata table (iv + plaintext SHA-256, never content) with RLS (members read, admin/editor insert **only when the workspace flag is on** — even admins are refused when it's off, uploaded_by must be caller, admin delete) + private `artifacts` storage bucket with per-workspace path-prefix policies. **12 new pgTAP assertions (54 total)** incl. cross-workspace invisibility of rows AND storage objects. Client: `artifactCrypto.ts` (AES-GCM-256 Web Crypto; key generated client-side, exported base64 for out-of-band sharing, held in localStorage per workspace, never uploaded) + `artifacts.ts` (store = encrypt→row→upload→audit with orphan-row rollback; download = fetch→decrypt→SHA-256 integrity verify, fails closed on wrong key/tamper). Panel: "Encrypted artifact vault" (flag-gated) — generate/import/copy key with the key-loss warning stated twice, store-loaded-release button, list with decrypt-&-download + admin delete. Toggle audit was already in (S6-7). Tests: byte-perfect round-trip on a real corpus release, ciphertext-marker scan (the network AC), wrong-key + GCM-tamper fail-closed, upload-payload inspection via fake client, integrity-mismatch rejection, panel state rendering. Events: `artifact.stored`/`artifact.deleted`.
 
 ### BL-002 · SSO (SAML/OIDC)
 - **Origin:** ARCHITECTURE §8.4; post-v1 list.
