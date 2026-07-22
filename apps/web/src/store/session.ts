@@ -18,7 +18,13 @@ export interface AnalysisResult {
   totalMs: number;
 }
 
-export type DetailTab = 'summary' | 'vulnerabilities' | 'improvements' | 'flow' | 'structure';
+export type DetailTab =
+  | 'summary'
+  | 'vulnerabilities'
+  | 'improvements'
+  | 'conversion'
+  | 'flow'
+  | 'structure';
 
 /** Which process/object the user is looking at, and where. */
 export interface Selection {

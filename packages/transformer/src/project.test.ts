@@ -48,7 +48,7 @@ describe('deterministicGuid', () => {
 });
 
 describe('buildProjectJson', () => {
-  it('emits valid Studio 2023.10 project metadata (snapshot)', () => {
+  it('emits valid Studio project metadata (snapshot)', () => {
     const json = buildProjectJson({
       name: 'Loan Payment Calculator',
       description: 'Converted from Blue Prism by PrismShift.',
@@ -61,8 +61,8 @@ describe('buildProjectJson', () => {
     expect(parsed['expressionLanguage']).toBe('VisualBasic');
     expect(parsed['targetFramework']).toBe('Windows');
     expect(parsed['dependencies']).toMatchObject({
-      'UiPath.System.Activities': '[23.10.2]',
-      'UiPath.UIAutomation.Activities': '[23.10.5]',
+      'UiPath.System.Activities': '[26.6.1]',
+      'UiPath.UIAutomation.Activities': '[26.10.0]',
     });
     expect(json).toMatchSnapshot();
   });

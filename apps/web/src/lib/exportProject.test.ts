@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { loadSample } from '@prismshift/corpus';
 import { parseBpRelease } from '@prismshift/parser';
-import { buildProcessExport, projectZipBlob } from './exportProject';
+import { buildProcessExport, buildReleaseExport, projectZipBlob } from './exportProject';
 
 describe('buildProcessExport', () => {
   it('clean & simple → plain layout with full coverage', async () => {
@@ -16,6 +16,9 @@ describe('buildProcessExport', () => {
       'project.json',
       'Main.xaml',
       'Pages/Calculate_Payment.xaml',
+      'AssetsManifest.json',
+      'QueuesManifest.json',
+      'MIGRATION_REPORT.md',
     ]);
   });
 
@@ -27,6 +30,38 @@ describe('buildProcessExport', () => {
 
     expect(project.layout).toBe('reframework');
     expect(project.files.map((f) => f.path)).toContain('Framework/GetTransactionData.xaml');
+
+    // Queue-wired scaffold + manifests ride along
+    const getData = project.files.find((f) => f.path === 'Framework/GetTransactionData.xaml')!;
+    expect(getData.content).toContain('QueueType="[&quot;Invoices Queue&quot;]"');
+    const queues = project.files.find((f) => f.path === 'QueuesManifest.json')!;
+    expect(queues.content).toContain('"Invoices Queue"');
+
+    // Referenced VBO workflows + the migration report ship in the ZIP
+    expect(project.files.map((f) => f.path)).toContain(
+      'Objects/Invoice_Entry_VBO/Get_Pending_Invoices.xaml',
+    );
+    const report = project.files.find((f) => f.path === 'MIGRATION_REPORT.md')!;
+    expect(report.content).toContain('# Migration Report — Invoice Dispatcher');
+    expect(report.content).toContain('Selector validation checklist');
+  });
+});
+
+describe('buildReleaseExport', () => {
+  it('bundles one self-contained project folder per process', async () => {
+    const { xml } = await loadSample('02-realistic-mid-size');
+    const { model } = await parseBpRelease(xml);
+    const release = buildReleaseExport(model);
+
+    expect(release.exports).toHaveLength(2);
+    const paths = release.files.map((f) => f.path);
+    expect(paths).toContain('Invoice_Dispatcher/project.json');
+    expect(paths).toContain('Invoice_Performer/project.json');
+    // Each project carries its own copy of the shared VBO + report
+    expect(paths).toContain('Invoice_Dispatcher/Objects/Invoice_Entry_VBO/Get_Pending_Invoices.xaml');
+    expect(paths).toContain('Invoice_Performer/Objects/Invoice_Entry_VBO/Enter_Invoice.xaml');
+    expect(paths).toContain('Invoice_Dispatcher/MIGRATION_REPORT.md');
+    expect(paths).toContain('Invoice_Performer/MIGRATION_REPORT.md');
   });
 });
 

@@ -70,8 +70,8 @@ export function deterministicGuid(seed: string): string {
 // ---------------------------------------------------------------------------
 
 const DEPENDENCIES: Record<string, string> = {
-  'UiPath.System.Activities': '[23.10.2]',
-  'UiPath.UIAutomation.Activities': '[23.10.5]',
+  'UiPath.System.Activities': '[26.6.1]',
+  'UiPath.UIAutomation.Activities': '[26.10.0]',
 };
 
 export function buildProjectJson(options: {
@@ -88,7 +88,7 @@ export function buildProjectJson(options: {
     webServices: [],
     entitiesStores: [],
     schemaVersion: '4.0',
-    studioVersion: '23.10.0.0',
+    studioVersion: '26.0.197.0',
     projectVersion: '1.0.0',
     runtimeOptions: {
       autoDispose: false,
@@ -136,67 +136,104 @@ export function buildProjectJson(options: {
 // REFramework scaffold (sequence-based v1)
 // ---------------------------------------------------------------------------
 
-const REFRAMEWORK_FILES: { path: string; doc: WorkflowDoc }[] = [
-  {
-    path: 'Framework/InitAllSettings.xaml',
-    doc: {
-      className: 'InitAllSettings',
-      arguments: [{ name: 'out_Config', direction: 'out', type: 'Object' }],
-      body: {
-        kind: 'sequence',
-        displayName: 'Init All Settings',
-        activities: [
-          {
-            kind: 'comment',
-            text: 'PrismShift scaffold: load configuration/assets here (BP environment variables map to Orchestrator assets — see AssetsManifest.json).',
-          },
-        ],
+function reframeworkFiles(queueName?: string): { path: string; doc: WorkflowDoc }[] {
+  const itemType = queueName !== undefined ? ('QueueItem' as const) : ('Object' as const);
+  return [
+    {
+      path: 'Framework/InitAllSettings.xaml',
+      doc: {
+        className: 'InitAllSettings',
+        arguments: [{ name: 'out_Config', direction: 'out', type: 'Object' }],
+        body: {
+          kind: 'sequence',
+          displayName: 'Init All Settings',
+          activities: [
+            {
+              kind: 'comment',
+              text: 'PrismShift scaffold: load configuration/assets here (BP environment variables map to Orchestrator assets — see AssetsManifest.json).',
+            },
+          ],
+        },
       },
     },
-  },
-  {
-    path: 'Framework/GetTransactionData.xaml',
-    doc: {
-      className: 'GetTransactionData',
-      arguments: [
-        { name: 'in_TransactionNumber', direction: 'in', type: 'Int32' },
-        { name: 'out_TransactionItem', direction: 'out', type: 'Object' },
-      ],
-      body: {
-        kind: 'sequence',
-        displayName: 'Get Transaction Data',
-        activities: [
-          {
-            kind: 'comment',
-            text: 'PrismShift scaffold: fetch the next work item (queue wiring arrives with the queue conversion — S5-2).',
-          },
+    {
+      path: 'Framework/GetTransactionData.xaml',
+      doc: {
+        className: 'GetTransactionData',
+        arguments: [
+          { name: 'in_TransactionNumber', direction: 'in', type: 'Int32' },
+          { name: 'out_TransactionItem', direction: 'out', type: itemType },
         ],
+        body: {
+          kind: 'sequence',
+          displayName: 'Get Transaction Data',
+          activities:
+            queueName !== undefined
+              ? [
+                  {
+                    kind: 'getTransactionItem',
+                    displayName: `Get next item from "${queueName}"`,
+                    queueName,
+                    storeIn: 'out_TransactionItem',
+                  },
+                ]
+              : [
+                  {
+                    kind: 'comment',
+                    text: 'PrismShift scaffold: fetch the next work item (no work queue detected in the source process).',
+                  },
+                ],
+        },
       },
     },
-  },
-  {
-    path: 'Framework/SetTransactionStatus.xaml',
-    doc: {
-      className: 'SetTransactionStatus',
-      arguments: [
-        { name: 'in_TransactionItem', direction: 'in', type: 'Object' },
-        { name: 'in_Status', direction: 'in', type: 'String' },
-      ],
-      body: {
-        kind: 'sequence',
-        displayName: 'Set Transaction Status',
-        activities: [
-          {
-            kind: 'comment',
-            text: 'PrismShift scaffold: mark the work item Completed/Failed (BP Mark Completed / Mark Exception map here).',
-          },
+    {
+      path: 'Framework/SetTransactionStatus.xaml',
+      doc: {
+        className: 'SetTransactionStatus',
+        arguments: [
+          { name: 'in_TransactionItem', direction: 'in', type: itemType },
+          { name: 'in_Status', direction: 'in', type: 'String' },
         ],
+        body: {
+          kind: 'sequence',
+          displayName: 'Set Transaction Status',
+          activities:
+            queueName !== undefined
+              ? [
+                  {
+                    kind: 'if',
+                    displayName: 'Success?',
+                    condition: 'in_Status = "Success"',
+                    then: {
+                      kind: 'setTransactionStatus',
+                      displayName: 'Mark Successful',
+                      status: 'Successful',
+                      transactionItem: 'in_TransactionItem',
+                    },
+                    else: {
+                      kind: 'setTransactionStatus',
+                      displayName: 'Mark Failed',
+                      status: 'Failed',
+                      errorType: 'Application',
+                      reason: '"Marked by framework: " & in_Status',
+                      transactionItem: 'in_TransactionItem',
+                    },
+                  },
+                ]
+              : [
+                  {
+                    kind: 'comment',
+                    text: 'PrismShift scaffold: mark the work item Completed/Failed (no work queue detected in the source process).',
+                  },
+                ],
+        },
       },
     },
-  },
-];
+  ];
+}
 
-function reframeworkMain(processFile: string): WorkflowDoc {
+function reframeworkMain(processFile: string, queueName?: string): WorkflowDoc {
+  const itemType = queueName !== undefined ? ('QueueItem' as const) : ('Object' as const);
   const transactionLoop: XActivity = {
     kind: 'tryCatch',
     displayName: 'Transaction Guard',
@@ -210,7 +247,7 @@ function reframeworkMain(processFile: string): WorkflowDoc {
           workflowFile: 'Framework\\GetTransactionData.xaml',
           arguments: [
             { name: 'in_TransactionNumber', direction: 'in', type: 'Int32', expression: 'TransactionNumber' },
-            { name: 'out_TransactionItem', direction: 'out', type: 'Object', expression: 'TransactionItem' },
+            { name: 'out_TransactionItem', direction: 'out', type: itemType, expression: 'TransactionItem' },
           ],
         },
         {
@@ -224,7 +261,7 @@ function reframeworkMain(processFile: string): WorkflowDoc {
           displayName: 'Mark Completed',
           workflowFile: 'Framework\\SetTransactionStatus.xaml',
           arguments: [
-            { name: 'in_TransactionItem', direction: 'in', type: 'Object', expression: 'TransactionItem' },
+            { name: 'in_TransactionItem', direction: 'in', type: itemType, expression: 'TransactionItem' },
             { name: 'in_Status', direction: 'in', type: 'String', expression: '"Success"' },
           ],
         },
@@ -238,7 +275,7 @@ function reframeworkMain(processFile: string): WorkflowDoc {
           displayName: 'Mark Business Exception',
           workflowFile: 'Framework\\SetTransactionStatus.xaml',
           arguments: [
-            { name: 'in_TransactionItem', direction: 'in', type: 'Object', expression: 'TransactionItem' },
+            { name: 'in_TransactionItem', direction: 'in', type: itemType, expression: 'TransactionItem' },
             { name: 'in_Status', direction: 'in', type: 'String', expression: '"BusinessException"' },
           ],
         },
@@ -250,7 +287,7 @@ function reframeworkMain(processFile: string): WorkflowDoc {
           displayName: 'Mark System Exception',
           workflowFile: 'Framework\\SetTransactionStatus.xaml',
           arguments: [
-            { name: 'in_TransactionItem', direction: 'in', type: 'Object', expression: 'TransactionItem' },
+            { name: 'in_TransactionItem', direction: 'in', type: itemType, expression: 'TransactionItem' },
             { name: 'in_Status', direction: 'in', type: 'String', expression: '"SystemException"' },
           ],
         },
@@ -266,7 +303,7 @@ function reframeworkMain(processFile: string): WorkflowDoc {
       displayName: 'REFramework Main (PrismShift scaffold)',
       variables: [
         { name: 'Config', type: 'Object' },
-        { name: 'TransactionItem', type: 'Object' },
+        { name: 'TransactionItem', type: itemType },
         { name: 'TransactionNumber', type: 'Int32', defaultExpression: '1' },
       ],
       activities: [
@@ -290,6 +327,8 @@ export interface BuildProjectOptions {
   name: string;
   description?: string;
   layout: 'plain' | 'reframework';
+  /** Wires REFramework scaffolds with real queue activities. */
+  queueName?: string;
   /** The process workflows: first entry is the process entry point. */
   workflows: { path: string; doc: WorkflowDoc }[];
 }
@@ -321,8 +360,11 @@ export function buildProject(options: BuildProjectOptions): UiPathProject {
     path: 'project.json',
     content: buildProjectJson({ name: options.name, description, mainFile: 'Main.xaml' }),
   });
-  files.push({ path: 'Main.xaml', content: emitWorkflowXaml(reframeworkMain(processEntry)) });
-  for (const scaffold of REFRAMEWORK_FILES) {
+  files.push({
+    path: 'Main.xaml',
+    content: emitWorkflowXaml(reframeworkMain(processEntry, options.queueName)),
+  });
+  for (const scaffold of reframeworkFiles(options.queueName)) {
     files.push({ path: scaffold.path, content: emitWorkflowXaml(scaffold.doc) });
   }
   for (const workflow of options.workflows) {

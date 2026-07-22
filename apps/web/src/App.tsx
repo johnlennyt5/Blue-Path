@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { APP_NAME, DEFAULT_MODE, modeLabel } from './lib/appInfo';
 import { BUILD_TIME } from './lib/buildInfo';
+import { buildReleaseExport, downloadBlob, releaseZipBlob } from './lib/exportProject';
 import { formatBytes } from './lib/fileIntake';
 import { DropZone } from './components/DropZone';
 import { OwnerCards } from './components/OwnerCards';
@@ -13,6 +15,7 @@ export default function App() {
   const analysis = useSession((s) => s.analysis);
   const selection = useSession((s) => s.selection);
   const reset = useSession((s) => s.reset);
+  const [bundleNote, setBundleNote] = useState<string | null>(null);
 
   const model = parseResult?.model;
   const findings = analysis?.findings ?? [];
@@ -94,6 +97,27 @@ export default function App() {
               </div>
             )}
 
+            {model && !selection && model.processes.length > 0 && (
+              <div className="mt-6 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const release = buildReleaseExport(model);
+                    void releaseZipBlob(release).then((blob) => {
+                      const name = (model.meta.packageName || 'release').replace(/[^A-Za-z0-9_-]+/g, '_');
+                      downloadBlob(blob, `${name}-UiPath-projects.zip`);
+                      setBundleNote(
+                        `${release.exports.length} project(s) bundled — one folder per process, each self-contained with its objects, manifests, and migration report.`,
+                      );
+                    });
+                  }}
+                  className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-sm text-sky-300 hover:bg-sky-500/20"
+                >
+                  ⬇ Download all UiPath projects ({model.processes.length})
+                </button>
+                {bundleNote && <span className="text-xs text-slate-400">{bundleNote}</span>}
+              </div>
+            )}
             {model && !selection && <OwnerCards model={model} findings={findings} />}
             {model && selection && <OwnerDetail model={model} findings={findings} />}
           </section>

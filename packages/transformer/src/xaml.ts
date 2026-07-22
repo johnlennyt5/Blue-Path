@@ -19,7 +19,8 @@ export type XamlType =
   | 'DateTime'
   | 'Int32'
   | 'Object'
-  | 'DataTable';
+  | 'DataTable'
+  | 'QueueItem';
 
 export interface XamlVariable {
   name: string;
@@ -84,7 +85,51 @@ export type XActivity =
       /** VB expression for the exception message (already quoted if literal). */
       message: string;
     }
-  | { kind: 'comment'; text: string };
+  | { kind: 'comment'; text: string }
+  | { kind: 'rethrow'; displayName?: string }
+  | { kind: 'typeInto'; displayName?: string; selector: string; text: string }
+  | { kind: 'getText'; displayName?: string; selector: string; storeIn: string }
+  | { kind: 'click'; displayName?: string; selector: string }
+  | {
+      kind: 'elementExists';
+      displayName?: string;
+      selector: string;
+      storeIn: string;
+      timeoutMs?: number;
+    }
+  | {
+      kind: 'invokeCode';
+      displayName?: string;
+      language: 'VBNet' | 'CSharp';
+      code: string;
+      arguments: InvokeArgumentBinding[];
+    }
+  | {
+      kind: 'addQueueItem';
+      displayName?: string;
+      /** Literal queue name, or a VB expression when `queueNameIsExpression`. */
+      queueName: string;
+      queueNameIsExpression?: boolean;
+      itemInformation: { name: string; expression: string }[];
+    }
+  | {
+      kind: 'getTransactionItem';
+      displayName?: string;
+      queueName: string;
+      queueNameIsExpression?: boolean;
+      /** Variable receiving the ui:QueueItem. */
+      storeIn: string;
+    }
+  | {
+      kind: 'setTransactionStatus';
+      displayName?: string;
+      status: 'Successful' | 'Failed';
+      /** VB expression for the QueueItem. */
+      transactionItem: string;
+      errorType?: 'Application' | 'Business';
+      /** VB expression for the failure reason. */
+      reason?: string;
+    };
 
 export interface WorkflowDoc {
   /** x:Class — must be a valid identifier. */
@@ -105,6 +150,7 @@ const TYPE_REF: Record<XamlType, string> = {
   Int32: 'x:Int32',
   Object: 'x:Object',
   DataTable: 'sd:DataTable',
+  QueueItem: 'ui:QueueItem',
 };
 
 const ARG_WRAPPER: Record<XamlArgument['direction'], string> = {
@@ -306,6 +352,141 @@ function emitActivity(w: Writer, activity: XActivity): void {
     case 'comment':
       w.line(`<ui:Comment Text="${escapeXml(activity.text)}" />`);
       return;
+
+    case 'rethrow':
+      w.line(`<Rethrow${displayAttr(activity.displayName, 'Rethrow')} />`);
+      return;
+
+    case 'typeInto':
+      w.block(
+        `<ui:TypeInto${displayAttr(activity.displayName, 'Type Into')} Text="${expr(activity.text)}">`,
+        '</ui:TypeInto>',
+        () => {
+          w.block('<ui:TypeInto.Target>', '</ui:TypeInto.Target>', () => {
+            w.line(`<ui:Target Selector="${escapeXml(activity.selector)}" />`);
+          });
+        },
+      );
+      return;
+
+    case 'getText':
+      w.block(
+        `<ui:GetText${displayAttr(activity.displayName, 'Get Text')}>`,
+        '</ui:GetText>',
+        () => {
+          w.block('<ui:GetText.Target>', '</ui:GetText.Target>', () => {
+            w.line(`<ui:Target Selector="${escapeXml(activity.selector)}" />`);
+          });
+          w.block('<ui:GetText.Value>', '</ui:GetText.Value>', () => {
+            w.line(`<OutArgument x:TypeArguments="x:String">${expr(activity.storeIn)}</OutArgument>`);
+          });
+        },
+      );
+      return;
+
+    case 'click':
+      w.block(
+        `<ui:Click${displayAttr(activity.displayName, 'Click')}>`,
+        '</ui:Click>',
+        () => {
+          w.block('<ui:Click.Target>', '</ui:Click.Target>', () => {
+            w.line(`<ui:Target Selector="${escapeXml(activity.selector)}" />`);
+          });
+        },
+      );
+      return;
+
+    case 'elementExists':
+      w.block(
+        `<ui:UiElementExists${displayAttr(activity.displayName, 'Element Exists')}>`,
+        '</ui:UiElementExists>',
+        () => {
+          w.block('<ui:UiElementExists.Target>', '</ui:UiElementExists.Target>', () => {
+            w.line(
+              `<ui:Target Selector="${escapeXml(activity.selector)}"${
+                activity.timeoutMs !== undefined ? ` TimeoutMS="${activity.timeoutMs}"` : ''
+              } />`,
+            );
+          });
+          w.block('<ui:UiElementExists.Exists>', '</ui:UiElementExists.Exists>', () => {
+            w.line(
+              `<OutArgument x:TypeArguments="x:Boolean">${expr(activity.storeIn)}</OutArgument>`,
+            );
+          });
+        },
+      );
+      return;
+
+    case 'invokeCode': {
+      const open = `<ui:InvokeCode${displayAttr(activity.displayName, 'Invoke Code')} Language="${activity.language}" Code="${escapeXml(activity.code)}"`;
+      if (activity.arguments.length === 0) {
+        w.line(`${open} />`);
+        return;
+      }
+      w.block(`${open}>`, '</ui:InvokeCode>', () => {
+        w.block('<ui:InvokeCode.Arguments>', '</ui:InvokeCode.Arguments>', () => {
+          for (const arg of activity.arguments) {
+            const wrapper =
+              arg.direction === 'in'
+                ? 'InArgument'
+                : arg.direction === 'out'
+                  ? 'OutArgument'
+                  : 'InOutArgument';
+            w.line(
+              `<${wrapper} x:TypeArguments="${TYPE_REF[arg.type]}" x:Key="${escapeXml(arg.name)}">${expr(arg.expression)}</${wrapper}>`,
+            );
+          }
+        });
+      });
+      return;
+    }
+
+    case 'addQueueItem': {
+      // UiPath.Core.Activities.AddQueueItem has no QueueName member — the
+      // queue name lives in QueueType, same as GetQueueItem (verified via
+      // assembly metadata, 23.10.2 and 26.6.1).
+      const queueAttr = activity.queueNameIsExpression
+        ? expr(activity.queueName)
+        : expr(JSON.stringify(activity.queueName));
+      const open = `<ui:AddQueueItem${displayAttr(activity.displayName, 'Add Queue Item')} QueueType="${queueAttr}"`;
+      if (activity.itemInformation.length === 0) {
+        w.line(`${open} />`);
+        return;
+      }
+      w.block(`${open}>`, '</ui:AddQueueItem>', () => {
+        w.block('<ui:AddQueueItem.ItemInformation>', '</ui:AddQueueItem.ItemInformation>', () => {
+          for (const item of activity.itemInformation) {
+            w.line(
+              `<InArgument x:TypeArguments="x:Object" x:Key="${escapeXml(item.name)}">${expr(item.expression)}</InArgument>`,
+            );
+          }
+        });
+      });
+      return;
+    }
+
+    case 'getTransactionItem': {
+      // Modern System.Activities: ui:GetQueueItem, queue NAME in QueueType
+      // (verified against the official REFramework 25.10 template).
+      const queueAttr = activity.queueNameIsExpression
+        ? expr(activity.queueName)
+        : expr(JSON.stringify(activity.queueName));
+      w.line(
+        `<ui:GetQueueItem${displayAttr(activity.displayName, 'Get Transaction Item')} QueueType="${queueAttr}" TransactionItem="${expr(activity.storeIn)}" />`,
+      );
+      return;
+    }
+
+    case 'setTransactionStatus': {
+      const errorAttrs =
+        activity.status === 'Failed'
+          ? ` ErrorType="${activity.errorType ?? 'Application'}"${activity.reason !== undefined ? ` Reason="${expr(activity.reason)}"` : ''}`
+          : '';
+      w.line(
+        `<ui:SetTransactionStatus${displayAttr(activity.displayName, `Set Transaction Status (${activity.status})`)} Status="${activity.status}"${errorAttrs} TransactionItem="${expr(activity.transactionItem)}" />`,
+      );
+      return;
+    }
   }
 }
 

@@ -134,6 +134,18 @@ describe('drop-to-analysis integration', () => {
     expect(await screen.findByText('critical')).toBeTruthy();
   });
 
+  it('the Conversion tab walks every stage mapping', async () => {
+    await loadSampleIntoApp();
+    fireEvent.click(await screen.findByText('Drop Test Process'));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Conversion' }));
+
+    expect(await screen.findByText(/% converted/)).toBeTruthy();
+    // The Login action targets an object missing from the release → manual
+    expect(await screen.findByText(/Objects\\Portal_VBO\\Log_In\.xaml/)).toBeTruthy();
+    expect(await screen.findByText('manual')).toBeTruthy();
+    expect(await screen.findByText(/not found in the release/)).toBeTruthy();
+  });
+
   it('dropping a non-XML file shows a friendly rejection', async () => {
     render(<App />);
     dropFile(screen.getByRole('button', { name: /drop a/i }), new File(['not xml'], 'notes.txt'));

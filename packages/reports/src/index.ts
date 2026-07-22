@@ -4,6 +4,7 @@
  */
 export const PACKAGE_NAME = '@prismshift/reports';
 
+export { buildMigrationReport } from './migrationReport';
 export { buildRecommendations, recommendationCoverage } from './recommendations';
 export type { Recommendation } from './recommendations';
 export { stepSentence, summarizeObject, summarizeProcess } from './summary';
