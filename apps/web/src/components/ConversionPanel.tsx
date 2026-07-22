@@ -49,9 +49,9 @@ export function ConversionPanel({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
-                    <th className="py-1.5 pr-3">Blue Prism stage</th>
-                    <th className="py-1.5 pr-3">UiPath</th>
-                    <th className="py-1.5 pr-3">Status</th>
+                    <th scope="col" className="py-1.5 pr-3">Blue Prism stage</th>
+                    <th scope="col" className="py-1.5 pr-3">UiPath</th>
+                    <th scope="col" className="py-1.5 pr-3">Status</th>
                     <th className="py-1.5">Confidence</th>
                   </tr>
                 </thead>

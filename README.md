@@ -83,3 +83,11 @@ See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for epics, sprint plan, and user storie
 ## Disclaimer
 
 PrismShift produces *assisted* conversions, not guaranteed ones. Target automation rate is 70–85% with a clear punch list of manual work per process. Generated selectors cannot be validated without the live target applications and are always flagged for human review. Before processing production exports from an employer environment, obtain the appropriate information-security approval.
+
+## Documentation
+
+- [User Guide](docs/USER_GUIDE.md) — every screen, both modes, limits
+- [Infosec Approval Pack](docs/INFOSEC_PACK.md) — "where does my data go?", data-flow diagrams, verification pointers
+- [Threat Model](docs/THREAT_MODEL.md) — assets, STRIDE table, deploy checklist
+- [Corpus Guide](docs/CORPUS_GUIDE.md) — the answer-key test estate and how to extend it
+- [Real-Export Validation Protocol](docs/REAL_EXPORT_VALIDATION.md) — qualifying PrismShift against a production Blue Prism export

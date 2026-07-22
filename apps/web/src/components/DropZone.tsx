@@ -62,6 +62,15 @@ export function DropZone() {
     <section aria-label="Import a Blue Prism release">
       <button
         type="button"
+        role="button"
+        tabIndex={0}
+        aria-label="Drop a Blue Prism export file here, or press Enter to browse"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         onClick={() => inputRef.current?.click()}
         onDrop={onDrop}
         onDragOver={onDragOver}
@@ -86,6 +95,7 @@ export function DropZone() {
       </button>
       <input
         ref={inputRef}
+        aria-label="Blue Prism export file"
         type="file"
         accept=".bprelease,.xml"
         className="hidden"

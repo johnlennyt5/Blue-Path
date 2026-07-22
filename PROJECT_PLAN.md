@@ -17,9 +17,19 @@
 | S5 — "It Converts (Part 2)" | ✅ complete | 6/6 done |
 | S6 — "Team Mode" | ✅ complete | 7/7 done |
 | S7 — "AI & Audit" | ✅ complete | 5/5 done |
-| S8 — "Ship It" | ⬜ | 0/6 |
+| S8 — "Ship It" | ✅ complete | 6/6 done |
 
 ### Completed log
+
+- **2026-07-22 — S8-5 + S8-6** Documentation pack — **Sprint 8 complete (6/6), v1 feature-complete.** `docs/USER_GUIDE.md` (quick start, all six analysis tabs, conversion outputs, Workspace Mode incl. roles, AI narrative, honest limits). `docs/INFOSEC_PACK.md` — the AC verbatim: a reviewer answers "where does my data go?" from the pack alone (one-paragraph answer, ASCII data-flow diagram, exhaustive per-channel carries/never-carries table with the enforcing code+tests named, tenant isolation, secrets, auditability, code pointers for auditors). `docs/CORPUS_GUIDE.md` (four sample personalities, bidirectional answer-key methodology, how to add samples). `docs/REAL_EXPORT_VALIDATION.md` (S8-6): sanitize-in-place procedure, five-step checklist (intake triage → model fidelity spot-checks → analysis sanity → Studio gate → gap filing), **parser adapter checklist** mapping each gap type to the exact module + the rule that every real-export gap becomes a corpus fragment in the same PR, sign-off block. README links the pack.
+
+- **2026-07-22 — S8-4** Security review: **dependency audit now clean** — the one finding (fast-xml-parser <5.7.0, GHSA-gh4j-gqv2-49f6, moderate) fixed by upgrading 4→5 with the corpus answer-key suite proving parse compatibility across the major bump. **CSP shipped** in index.html (`script-src 'self'`, `object-src 'none'`, `base-uri 'self'`, loopback-scoped connect-src for the local stack; style-src keeps 'unsafe-inline' for React style attrs — documented residual) and the offline analyze+convert probe re-passed under it; `frame-ancestors` is header-only → deploy checklist. Verified zero `dangerouslySetInnerHTML` in the codebase. **docs/THREAT_MODEL.md**: assets table, trust boundaries, 13-row STRIDE table (every mitigation cross-referenced to its tests — fuzz redaction, pgTAP isolation, live proxy abuse, entity-bomb behavior observed), hosting-layer deploy checklist, and three explicitly accepted residual risks. Both dev-transited API keys flagged for rotation.
+
+- **2026-07-22 — S8-3** Accessibility: axe (vitest-axe) now runs in CI over every major surface — landing, detail view on all five tabs, migration tracker, workspace panel — with only renderer-dependent rules disabled (color-contrast, scrollable-region; jsdom has no layout engine). Fixes: detail tabs got **full WAI-ARIA tab pattern** (roving tabindex — only the active tab in tab order — ArrowLeft/Right with wrap, Home/End, focus follows selection, `tabpanel` labelled by its tab); drop zone is now a real keyboard target (`role=button`, `tabIndex=0`, Enter/Space opens the picker, descriptive accessible name — which the existing integration suite immediately enforced by failing until the name kept its "Drop a…" phrasing); the hidden file input got a label (axe's catch); tracker + conversion tables got `scope="col"` headers and an sr-only caption. 6 new tests (4 axe surfaces + tab-bar keyboard behaviors + drop-zone operability). 7/7 green.
+
+- **2026-07-22 — S8-2** PWA/offline: `vite-plugin-pwa` (autoUpdate) precaches the entire app shell — 11 entries incl. the parser-worker and jsPDF chunks (cache cap raised to 6 MB) — with a web manifest (name/theme/standalone + SVG icon `public/prismshift-icon.svg`) and `registerSW({immediate})` in main.tsx. Workspace Mode calls simply fail gracefully offline; Local Mode needs nothing. **AC proven with a headless offline E2E**: load once (SW installs) → `Network.emulateNetworkConditions offline` → reload served by the SW (controller non-null, shell renders) → corpus file injected via the file input → **full analyze (C·74, 2 findings) + Conversion tab (100% converted stage table) rendered with zero network** — screenshot captured. Harness note: synthetic DragEvent drops don't reach React's onDrop in headless Chrome; drive the hidden `<input type=file>` (files defineProperty + change event) instead. 7/7 packages still green.
+
+- **2026-07-22 — S8-1** Performance (§12 targets met, CI-enforced): `packages/parser/src/chunked.ts` — large releases parse **component-by-component**: a depth-aware scanner (CDATA/comment/PI-safe) finds `<bpr:contents>` direct children, batches (≤32 elements / ≤4 MB) rewrap into mini release docs through the ordinary parser, models merge with **source-path indices rewritten local→global in descending order** (provably collision-free), event-loop yields + progress callbacks between batches; kicks in above 8 MB (`chunkThreshold` overridable). Correctness anchor: chunked ≡ whole **byte-identical** (models+warnings+errors) on 3 corpus samples. Budgets in CI: synthetic-release generator → **5 MB parses in 728 ms** (<5 s target, 584 processes) and **50 MB parses chunked in ~20 s with only +49 MB retained heap** across 4,002 processes, progress streamed, global indices verified. Worker hardening: 50 MB refusal with a split-the-release message, try/catch turns OOM into an honest error instead of a dead worker; Comlink-proxied progress → "Parsing… X/Y components" live in the UI. Gotcha logged: fast-xml-parser's entity-expansion guard (>1000 entities) — synthetic corpora must avoid `&quot;`-heavy content. 6 new tests. 7/7 green.
 
 - **2026-07-22 — Sprint 7 gate (user testing) + OpenAI provider** Gate passed live: real AI narrative generated through the Workspace proxy end-to-end (accurate business description from names/types/structure only; `ai.narrative` audit event visible in Recent activity — event only, content stays in the browser, as designed). Added **OpenAI as a second provider** (user request): llm-proxy auto-selects by configured key (`LLM_PROVIDER` override; anthropic default `claude-sonnet-5`, openai default `gpt-4o-mini`), plus a `dry_run` hook so the abuse suite exercises every gate without spending credits on any configured key. Security save during testing: an API key pasted into the committed `.env.example` was caught before push, moved to the gitignored `.env`, template scrubbed (rotation recommended). `.env.example` documents both providers.
 
@@ -219,12 +229,12 @@
 
 | ID | Story | AC | Pts |
 |---|---|---|---|
-| S8-1 | Performance: streamed parse for 50 MB, memory guard, budget test in CI | §12 targets met | 5 |
-| S8-2 | PWA/offline for Local Mode | Full analyze/convert cycle offline after first load | 3 |
-| S8-3 | Accessibility pass (WCAG 2.1 AA on dashboard + reports) | Axe CI clean; keyboard nav on tabs/tables | 3 |
-| S8-4 | Security review: CSP, dependency audit, threat-model doc | Checklist complete; findings fixed or ticketed | 3 |
-| S8-5 | Docs: user guide, infosec approval pack (architecture + data-flow diagrams), corpus guide | A reviewer can answer "where does my data go?" from the pack alone | 3 |
-| S8-6 | Real-export validation protocol | Written procedure for diffing a sanitized real `.bprelease` against corpus assumptions; parser adapter checklist | 2 |
+| S8-1 ✅ | Performance: streamed parse for 50 MB, memory guard, budget test in CI | §12 targets met | 5 |
+| S8-2 ✅ | PWA/offline for Local Mode | Full analyze/convert cycle offline after first load | 3 |
+| S8-3 ✅ | Accessibility pass (WCAG 2.1 AA on dashboard + reports) | Axe CI clean; keyboard nav on tabs/tables | 3 |
+| S8-4 ✅ | Security review: CSP, dependency audit, threat-model doc | Checklist complete; findings fixed or ticketed | 3 |
+| S8-5 ✅ | Docs: user guide, infosec approval pack (architecture + data-flow diagrams), corpus guide | A reviewer can answer "where does my data go?" from the pack alone | 3 |
+| S8-6 ✅ | Real-export validation protocol | Written procedure for diffing a sanitized real `.bprelease` against corpus assumptions; parser adapter checklist | 2 |
 
 ---
 
