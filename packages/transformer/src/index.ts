@@ -26,6 +26,8 @@ export type {
   ProjectFile,
   UiPathProject,
 } from './project';
+export { buildTestCases } from './testCases';
+export type { TestCaseFile } from './testCases';
 export { emitWorkflowXaml, escapeXml } from './xaml';
 export type {
   InvokeArgumentBinding,

@@ -84,6 +84,8 @@ export function buildProjectJson(options: {
   extraDependencies?: Record<string, string>;
   /** Entry points; defaults to [mainFile]. Libraries list every workflow. */
   entryPointFiles?: string[];
+  /** Test-case workflow paths (BL-006) — registered in fileInfoCollection. */
+  testCaseFiles?: string[];
 }): string {
   const projectJson = {
     name: options.name,
@@ -118,7 +120,12 @@ export function buildProjectJson(options: {
         privateWorkflows: [],
       },
       processOptions: { ignoredFiles: [] },
-      fileInfoCollection: [],
+      fileInfoCollection: (options.testCaseFiles ?? []).map((filePath) => ({
+        editingStatus: 'Publishable',
+        testCaseId: deterministicGuid(`${options.name}/test/${filePath}`),
+        testCaseType: 'TestCase',
+        fileName: filePath,
+      })),
       saveToCloud: false,
     },
     expressionLanguage: 'VisualBasic',

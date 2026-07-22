@@ -38,10 +38,12 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Expected behavior:** Opt-in (same disclosure gating as the S7 AI layer): send the code body — code only, after the S7-1 redaction rules — to the LLM for idiomatic .NET translation, returned as a *suggestion* diff the user accepts per stage; never auto-applied. JScript → VB.NET proposals included.
 - **Acceptance:** Suggestion visible side-by-side with the original; accepting updates the emitted InvokeCode; declining keeps verbatim; everything logged in the migration report.
 
-### BL-006 · Test-harness generation
+### BL-006 · Test-harness generation — ✅ done (2026-07-22, backlog-test-harness, stacked on backlog-library-export)
 - **Origin:** Post-v1 list.
 - **Expected behavior:** From each BP process's startup params/outputs, generate UiPath Test Case stubs (arguments wired, assertion placeholders, one happy-path + one exception-path skeleton per process).
 - **Acceptance:** Generated test cases open in Studio's Test Explorer without repair.
+- **Done (2026-07-22):** `buildTestCases` (transformer): per process, `Tests/<Name>_HappyPath.xaml` + `Tests/<Name>_ExceptionPath.xaml` — Given/When/Then structure; process arguments wired to defaulted `tc_*` variables and invoke bindings; happy path asserts each output via placeholder If→WriteLine/Throw (fails loudly when falsified); exception path runs the invoke inside TryCatch — completing normally throws "expected the process to throw", BusinessRuleException = pass. **Built exclusively from gate-proven activity shapes** (no ut:/Verify elements that could fail loading — Testing package absent from the dev machine, BL-017 doctrine); `UiPath.Testing.Activities [24.10.0]` pre-declared in dependencies and each stub registered in `designOptions.fileInfoCollection` (testCaseType/testCaseId) so Test Explorer lists them. Rides in every process export (embed + library modes, web ZIPs + CLI --convert). 5 new tests. Bonus fix: turbo test tasks now depend on `^test` — a stale-cache bug that was hiding a cross-package test failure.
+- **Residual:** fileInfoCollection registration shape is documented-standard but had no on-machine template to copy — Test Explorer listing is the user's Studio gate; swap placeholders for Verify* activities post-install.
 
 ### BL-007 · Orchestrator API integration
 - **Origin:** Post-v1 list. Today `QueuesManifest.json`/`AssetsManifest.json` (S5-2) are hand-off documents.

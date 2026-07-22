@@ -8,6 +8,7 @@ import {
   buildLibraryProject,
   buildManifests,
   buildProject,
+  buildTestCases,
   convertObject,
   convertProcess,
   decideProjectLayout,
@@ -15,6 +16,7 @@ import {
   sanitizeFileName,
 } from '@prismshift/transformer';
 import type { ObjectConversion, ProcessConversion, UiPathProject } from '@prismshift/transformer';
+import { deterministicGuid } from '@prismshift/transformer';
 import { buildMigrationReport } from './migrationReport';
 
 const emitObjectWorkflow = emitWorkflowXaml;
@@ -114,6 +116,33 @@ export function buildProcessExport(
         sourceRef: 'project.json/dependencies',
       });
     }
+  }
+
+  // BL-006: Given/When/Then test-case stubs per process, registered in
+  // project.json (fileInfoCollection) with the Testing dependency declared.
+  const mainWorkflow = conversion.workflows[0];
+  if (mainWorkflow !== undefined) {
+    const testCases = buildTestCases({
+      processName: process.name,
+      mainFile: mainWorkflow.path,
+      arguments: mainWorkflow.doc.arguments,
+    });
+    for (const testCase of testCases) {
+      project.files.push({ path: testCase.path, content: emitWorkflowXaml(testCase.doc) });
+    }
+    const projectJsonFile = project.files.find((f) => f.path === 'project.json')!;
+    const projectJson = JSON.parse(projectJsonFile.content) as {
+      dependencies: Record<string, string>;
+      designOptions: { fileInfoCollection: unknown[] };
+    };
+    projectJson.dependencies['UiPath.Testing.Activities'] = '[24.10.0]';
+    projectJson.designOptions.fileInfoCollection = testCases.map((testCase) => ({
+      editingStatus: 'Publishable',
+      testCaseId: deterministicGuid(`${process.name}/test/${testCase.path}`),
+      testCaseType: 'TestCase',
+      fileName: testCase.path,
+    }));
+    projectJsonFile.content = `${JSON.stringify(projectJson, null, 2)}\n`;
   }
 
   // Orchestrator setup manifests + the honest migration report ride along

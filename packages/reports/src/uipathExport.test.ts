@@ -107,3 +107,32 @@ describe('release export delivery modes', () => {
     expect(paths.some((p) => p.startsWith('Libraries/'))).toBe(false);
   });
 });
+
+describe('BL-006 · test-case stubs ride in every process export', () => {
+  it('Tests/ workflows present + registered in fileInfoCollection + Testing dependency', async () => {
+    const model = await sample2();
+    const dispatcher = model.processes.find((p) => p.name === 'Invoice Dispatcher')!;
+    const { project } = buildProcessExport(model, dispatcher);
+
+    const paths = project.files.map((f) => f.path);
+    expect(paths).toContain('Tests/Invoice_Dispatcher_HappyPath.xaml');
+    expect(paths).toContain('Tests/Invoice_Dispatcher_ExceptionPath.xaml');
+
+    const projectJson = JSON.parse(
+      project.files.find((f) => f.path === 'project.json')!.content,
+    ) as {
+      dependencies: Record<string, string>;
+      designOptions: { fileInfoCollection: { fileName: string; testCaseType: string; testCaseId: string }[] };
+    };
+    expect(projectJson.dependencies['UiPath.Testing.Activities']).toBe('[24.10.0]');
+    const registered = projectJson.designOptions.fileInfoCollection;
+    expect(registered.map((f) => f.fileName).sort()).toEqual([
+      'Tests/Invoice_Dispatcher_ExceptionPath.xaml',
+      'Tests/Invoice_Dispatcher_HappyPath.xaml',
+    ]);
+    for (const entry of registered) {
+      expect(entry.testCaseType).toBe('TestCase');
+      expect(entry.testCaseId).toMatch(/^[0-9a-f-]{36}$/);
+    }
+  });
+});
