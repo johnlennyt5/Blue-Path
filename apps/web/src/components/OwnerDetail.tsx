@@ -96,12 +96,32 @@ export function OwnerDetail({
         {exportNote && <span className="text-xs text-slate-400">{exportNote}</span>}
       </div>
 
-      <div role="tablist" aria-label="Analysis views" className="mb-4 flex gap-1 border-b border-slate-800">
+      <div
+        role="tablist"
+        aria-label="Analysis views"
+        className="mb-4 flex gap-1 border-b border-slate-800"
+        onKeyDown={(e) => {
+          const ids = TABS.map((t) => t.id);
+          const current = ids.indexOf(selection.tab);
+          let next = -1;
+          if (e.key === 'ArrowRight') next = (current + 1) % ids.length;
+          else if (e.key === 'ArrowLeft') next = (current - 1 + ids.length) % ids.length;
+          else if (e.key === 'Home') next = 0;
+          else if (e.key === 'End') next = ids.length - 1;
+          if (next !== -1) {
+            e.preventDefault();
+            setTab(ids[next]!);
+            document.getElementById(`analysis-tab-${ids[next]!}`)?.focus();
+          }
+        }}
+      >
         {TABS.map((tab) => (
           <button
             key={tab.id}
+            id={`analysis-tab-${tab.id}`}
             role="tab"
             aria-selected={selection.tab === tab.id}
+            tabIndex={selection.tab === tab.id ? 0 : -1}
             type="button"
             onClick={() => setTab(tab.id)}
             className={`rounded-t-lg px-4 py-2 text-sm ${
@@ -115,6 +135,7 @@ export function OwnerDetail({
         ))}
       </div>
 
+      <div role="tabpanel" aria-labelledby={`analysis-tab-${selection.tab}`}>
       {selection.tab === 'summary' && (
         <SummaryPanel model={model} owner={owner} isProcess={process !== undefined} />
       )}
@@ -128,6 +149,7 @@ export function OwnerDetail({
         <ConversionPanel model={model} owner={owner} isProcess={process !== undefined} />
       )}
       {selection.tab === 'flow' && <FlowView owner={owner} />}
+      </div>
       {selection.tab === 'structure' && (
         <NodeBranch node={owner} label={process ? 'Process' : 'Object'} />
       )}

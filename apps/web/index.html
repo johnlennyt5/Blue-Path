@@ -2,6 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- S8-4: strict-by-default CSP. connect-src allows self + HTTPS (hosted
+         Supabase) + local loopback (the local stack). frame-ancestors is
+         header-only — set it at the hosting layer (see docs/THREAT_MODEL.md). -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https: http://127.0.0.1:* http://localhost:* ws://localhost:*; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PrismShift — Blue Prism → UiPath Migration</title>
   </head>

@@ -123,15 +123,18 @@ export function MigrationTracker() {
         </p>
       ) : (
         <table className="w-full text-left text-sm">
+          <caption className="sr-only">
+            Migration status per process: grade, score, stages, findings, effort, status
+          </caption>
           <thead>
             <tr className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
-              <th className="py-2 pr-3">Process</th>
-              <th className="py-2 pr-3">Grade</th>
-              <th className="py-2 pr-3">Score</th>
-              <th className="py-2 pr-3">Stages</th>
-              <th className="py-2 pr-3">Findings</th>
-              <th className="py-2 pr-3">Effort</th>
-              <th className="py-2 pr-3">Status</th>
+              <th scope="col" className="py-2 pr-3">Process</th>
+              <th scope="col" className="py-2 pr-3">Grade</th>
+              <th scope="col" className="py-2 pr-3">Score</th>
+              <th scope="col" className="py-2 pr-3">Stages</th>
+              <th scope="col" className="py-2 pr-3">Findings</th>
+              <th scope="col" className="py-2 pr-3">Effort</th>
+              <th scope="col" className="py-2 pr-3">Status</th>
             </tr>
           </thead>
           <tbody>

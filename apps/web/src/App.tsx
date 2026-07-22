@@ -16,6 +16,7 @@ import { useWorkspaceStore } from './store/workspace';
 export default function App() {
   const loaded = useSession((s) => s.loaded);
   const parsing = useSession((s) => s.parsing);
+  const parsingProgress = useSession((s) => s.parsingProgress);
   const parseResult = useSession((s) => s.parseResult);
   const analysis = useSession((s) => s.analysis);
   const selection = useSession((s) => s.selection);
@@ -100,7 +101,7 @@ export default function App() {
 
             {parsing && (
               <p className="rounded-lg border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400">
-                Parsing…
+                {parsingProgress ?? 'Parsing…'}
               </p>
             )}
 

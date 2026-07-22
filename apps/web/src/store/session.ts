@@ -38,6 +38,8 @@ export interface Selection {
 export interface SessionState {
   loaded: LoadedRelease | null;
   intakeError: string | null;
+  /** Large-file chunked-parse progress line (null when idle/small files). */
+  parsingProgress: string | null;
   parsing: boolean;
   parseResult: ParseResult | null;
   analysis: AnalysisResult | null;
@@ -58,6 +60,7 @@ export const useSession = create<SessionState>((set) => ({
   loaded: null,
   intakeError: null,
   parsing: false,
+  parsingProgress: null,
   parseResult: null,
   analysis: null,
   selection: null,
@@ -87,8 +90,11 @@ export const useSession = create<SessionState>((set) => ({
         analysis: null,
         selection: null,
         parsing: true,
+        parsingProgress: null,
       });
-      const parseResult = await parseReleaseXml(result.file.xml);
+      const parseResult = await parseReleaseXml(result.file.xml, ({ done, total }) => {
+        set({ parsingProgress: `Parsing… ${done}/${total} components` });
+      });
       plog(
         `parse complete: ${parseResult.model.processes.length} processes, ` +
           `${parseResult.model.objects.length} objects, ` +
@@ -101,6 +107,7 @@ export const useSession = create<SessionState>((set) => ({
         parseResult,
         analysis: { findings: run.findings, totalMs: run.totalMs },
         parsing: false,
+        parsingProgress: null,
       });
     } catch (cause) {
       plog(`UNEXPECTED ERROR in intake: ${String(cause)}`);

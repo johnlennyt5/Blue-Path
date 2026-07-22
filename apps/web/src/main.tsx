@@ -1,3 +1,4 @@
+import { registerSW } from 'virtual:pwa-register';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
@@ -17,3 +18,6 @@ createRoot(rootElement).render(
     <App />
   </StrictMode>,
 );
+
+// S8-2: cache the app shell for offline Local Mode; auto-update on new builds.
+registerSW({ immediate: true });

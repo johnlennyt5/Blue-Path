@@ -1,4 +1,6 @@
 import { XMLParser } from 'fast-xml-parser';
+import { parseChunkedRelease } from './chunked';
+import type { ParseOptions } from './chunked';
 import { buildDependencyGraph } from '@prismshift/ir';
 import type {
   AppElement,
@@ -627,15 +629,33 @@ function emptyModel(sourceHash: string): AutomationModel {
   };
 }
 
+const DEFAULT_CHUNK_THRESHOLD = 8 * 1024 * 1024;
+
 /**
  * Parses a .bprelease (release package) or single-process .xml export into
  * the IR. Never throws: malformed input lands in `errors`, tolerated
  * oddities in `warnings`.
+ *
+ * Releases larger than `chunkThreshold` (default 8 MB) parse
+ * component-by-component (S8-1): bounded peak memory, progress reporting,
+ * and event-loop yields between components — byte-identical results.
  */
-export async function parseBpRelease(xml: string): Promise<ParseResult> {
+export async function parseBpRelease(
+  xml: string,
+  options: ParseOptions = {},
+): Promise<ParseResult> {
+  const sourceHash = await sha256Hex(xml);
+  const threshold = options.chunkThreshold ?? DEFAULT_CHUNK_THRESHOLD;
+  if (xml.length > threshold && xml.includes('<bpr:contents')) {
+    return parseChunkedRelease(xml, sourceHash, options, parseReleaseCore);
+  }
+  return parseReleaseCore(xml, sourceHash);
+}
+
+/** Single-pass parse core (chunked mode calls this once per batch). */
+export function parseReleaseCore(xml: string, sourceHash: string): ParseResult {
   const warnings: ParseIssue[] = [];
   const errors: ParseIssue[] = [];
-  const sourceHash = await sha256Hex(xml);
 
   let doc: unknown;
   try {
