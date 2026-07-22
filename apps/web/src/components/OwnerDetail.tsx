@@ -7,6 +7,7 @@ import { GRADE_COLORS } from '../lib/findingView';
 import { sanitizeFileName } from '@prismshift/transformer';
 import { useSession } from '../store/session';
 import type { DetailTab } from '../store/session';
+import { ConversionPanel } from './ConversionPanel';
 import { FindingsPanel } from './FindingsPanel';
 import { FlowView } from './FlowView';
 import { ImprovementsPanel } from './ImprovementsPanel';
@@ -17,6 +18,7 @@ const TABS: { id: DetailTab; label: string }[] = [
   { id: 'summary', label: 'Summary' },
   { id: 'vulnerabilities', label: 'Vulnerabilities' },
   { id: 'improvements', label: 'Improvements' },
+  { id: 'conversion', label: 'Conversion' },
   { id: 'flow', label: 'Flow' },
   { id: 'structure', label: 'Structure' },
 ];
@@ -86,6 +88,11 @@ export function OwnerDetail({
             ⬇ Download UiPath project
           </button>
         )}
+        {!process && (
+          <span className="ml-auto text-xs text-slate-500">
+            Ships inside each process ZIP that calls it (Objects\…)
+          </span>
+        )}
         {exportNote && <span className="text-xs text-slate-400">{exportNote}</span>}
       </div>
 
@@ -116,6 +123,9 @@ export function OwnerDetail({
       )}
       {selection.tab === 'improvements' && (
         <ImprovementsPanel model={model} ownerId={owner.id} findings={findings} />
+      )}
+      {selection.tab === 'conversion' && (
+        <ConversionPanel model={model} owner={owner} isProcess={process !== undefined} />
       )}
       {selection.tab === 'flow' && <FlowView owner={owner} />}
       {selection.tab === 'structure' && (

@@ -373,6 +373,8 @@ function parseStage(raw: Xml, ctx: StageParseContext): Stage {
         const detail = str(exception['@_detail']);
         if (exceptionType !== '') stage.exceptionType = exceptionType;
         if (detail !== '') stage.detail = { raw: detail };
+        // BP "preserve the current exception" = rethrow inside recovery
+        if (str(exception['@_usecurrent']).toLowerCase() === 'true') stage.preserve = true;
       }
       return stage;
     }

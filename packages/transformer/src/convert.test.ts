@@ -53,7 +53,7 @@ describe('convertProcess · corpus #1 "Clean & Simple"', () => {
     const page = conversion.workflows[1]!.doc;
     const xaml = emitWorkflowXaml(page);
 
-    expect(xaml).toContain('<If Condition="[(in_Principal &gt; 0) AND (in_Term_Months &gt; 0)]"');
+    expect(xaml).toContain('<If Condition="[in_Principal &gt; 0 And in_Term_Months &gt; 0]"');
     expect(xaml).toContain('[in_Annual_Rate / 12 / 100]');
     expect(xaml).toContain(
       'Exception="[New UiPath.Core.BusinessRuleException(&quot;Principal and Term Months must be greater than zero&quot;)]"',
@@ -80,8 +80,8 @@ describe('convertProcess · corpus #1 "Clean & Simple"', () => {
   });
 });
 
-describe('convertProcess · loops and unsupported kinds (corpus #2 dispatcher)', () => {
-  it('maps collection loops to ForEachRow and flags Sprint-5 kinds honestly', async () => {
+describe('convertProcess · loops and object invokes (corpus #2 dispatcher)', () => {
+  it('maps collection loops to ForEachRow and invokes converted VBO workflows', async () => {
     const { xml } = await loadSample('02-realistic-mid-size');
     const { model } = await parseBpRelease(xml);
     const dispatcher = model.processes.find((p) => p.name === 'Invoice Dispatcher')!;
@@ -89,15 +89,13 @@ describe('convertProcess · loops and unsupported kinds (corpus #2 dispatcher)',
 
     const xaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
     expect(xaml).toContain('<ui:ForEachRow DataTable="[New_Invoices]"');
-    expect(xaml).toContain('PrismShift TODO (Sprint 5): action stage');
+    // VBO calls now invoke the converted object workflows (S5-5)
+    expect(xaml).toContain('WorkflowFileName="Objects\\Invoice_Entry_VBO\\Get_Pending_Invoices.xaml"');
+    expect(xaml).toContain('x:Key="in_Archive_Password">[&quot;ArchiveP@ss2024!&quot;]');
 
-    // Both action stages are punch-listed, everything else converts
-    expect(conversion.punchList.map((i) => `${i.stageKind}:${i.stageName}`)).toEqual([
-      'action:Get Pending Invoices',
-      'action:Add To Queue',
-    ]);
-    expect(conversion.convertedStageCount).toBe(conversion.totalStageCount - 2);
-    expect(conversion.coveragePct).toBe(80);
+    expect(conversion.punchList).toEqual([]);
+    expect(conversion.convertedStageCount).toBe(conversion.totalStageCount);
+    expect(conversion.coveragePct).toBe(100);
   });
 });
 

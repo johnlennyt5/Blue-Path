@@ -84,7 +84,7 @@ exports[`convertProcess · corpus #1 "Clean & Simple" > is deterministic and sna
     <Sequence.Variables>
       <Variable x:TypeArguments="x:Double" Name="Monthly_Rate" />
     </Sequence.Variables>
-    <If Condition="[(in_Principal &gt; 0) AND (in_Term_Months &gt; 0)]" DisplayName="Valid Inputs?">
+    <If Condition="[in_Principal &gt; 0 And in_Term_Months &gt; 0]" DisplayName="Valid Inputs?">
       <If.Then>
         <Sequence DisplayName="True">
           <Assign DisplayName="Compute Payment: Monthly Rate">
@@ -100,7 +100,7 @@ exports[`convertProcess · corpus #1 "Clean & Simple" > is deterministic and sna
               <OutArgument x:TypeArguments="x:Double">[out_Monthly_Payment]</OutArgument>
             </Assign.To>
             <Assign.Value>
-              <InArgument x:TypeArguments="x:Double">[(in_Principal + (in_Principal * Monthly_Rate * in_Term_Months)) / in_Term_Months]</InArgument>
+              <InArgument x:TypeArguments="x:Double">[(in_Principal + in_Principal * Monthly_Rate * in_Term_Months) / in_Term_Months]</InArgument>
             </Assign.Value>
           </Assign>
         </Sequence>
