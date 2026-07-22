@@ -60,13 +60,29 @@ export function buildProcessExport(model: AutomationModel, process: ProcessNode)
     usesQueues: processUsesQueues(process),
   });
   const queueName = firstQueueName(process);
+  // BL-016: seed the REFramework Config from the release itself
+  const configEntries = [
+    ...(queueName !== undefined ? [{ key: 'OrchestratorQueueName', value: queueName }] : []),
+    ...model.environmentVars.map((envVar) => ({ key: envVar.name, value: envVar.value ?? '' })),
+    ...model.credentialsRefs.map((credential) => ({
+      key: `${credential.name}_CredentialAsset`,
+      value: credential.name,
+    })),
+  ];
   const project = buildProject({
     name: process.name,
     description: `Converted from Blue Prism "${process.name}" by PrismShift (coverage ${conversion.coveragePct}%).`,
     layout,
     ...(queueName !== undefined ? { queueName } : {}),
     workflows: conversion.workflows,
+    configEntries,
   });
+  if (layout === 'reframework') {
+    project.files.push({
+      path: 'Data/Config.json',
+      content: `${JSON.stringify(Object.fromEntries(configEntries.map((e) => [e.key, e.value])), null, 2)}\n`,
+    });
+  }
 
   // Referenced objects ship as Objects/<Object>/<Page>.xaml workflows
   const objectNames = referencedObjects(model, process);

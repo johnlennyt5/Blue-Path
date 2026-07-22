@@ -87,15 +87,17 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Expected behavior:** Recognize the specific shape [GetNext → guard-decision(empty?) → work → MarkStatus → back-edge] and, instead of a cycle warning, emit the work as the REFramework `Process` body with the loop handled by the framework's transaction loop. Anything deviating from the exact shape stays manual.
 - **Acceptance:** Performer main page converts without the cycle punch entry, its work living in Process.xaml; a deliberately-deviant cycle still flags manual; Studio-openable.
 
-### BL-015 · Expression translator gaps
+### BL-015 · Expression translator gaps — ✅ done (2026-07-22, backlog-conversion-fidelity-2)
 - **Origin:** S5-1/S5-3 deliberate flags. Current: `DateDiff` supports only `"d"`; `DateAdd` unknown intervals flagged; `ExceptionStage()` refused; multi-condition waits convert first condition only (S5-4); regex attribute matches approximated (S5-4 selectors).
 - **Expected behavior:** Extend per real-export demand (S8-6 protocol will reveal frequency): DateDiff w/m/h/n/s via TimeSpan components; wait stages with N conditions → N ElementExists + Or-combined If; keep the flag-don't-guess contract for anything else.
 - **Acceptance:** Each added mapping lands with table-driven cases in `bpExpression.test.ts` (or wait cases in selectors tests); flags removed only where a mapping now exists.
+- **Done (2026-07-22):** DateDiff full interval set — h/n/s via TimeSpan components, m/yyyy/q/ww/w via native VB `DateDiff(DateInterval.X, …)`; DateAdd calendar intervals (q/ww/w/y) via native VB `DateAdd`; unknown intervals still flag (never guess). **Multi-condition waits**: every condition now emits its own UiElementExists, Or-combined into the decision (BP waits proceed on ANY condition); "conditions dropped" flag removed; suffixed Exists_*_n variables. 8 new table cases + 2 wait tests; the two previously-flagged intervals moved to the clean table per the acceptance rule. ExceptionStage() remains refused by design.
 
-### BL-016 · REFramework Config.xlsx
+### BL-016 · REFramework Config.xlsx — ✅ done (2026-07-22, backlog-conversion-fidelity-2; JSON-inline route chosen)
 - **Origin:** S4-2 honesty note — binary artifacts aren't emitted; InitAllSettings is a commented scaffold.
 - **Expected behavior:** Either generate a real `Data/Config.xlsx` (SheetJS — weigh the dependency against Local Mode bundle size) seeded from AssetsManifest entries, or emit `Config.json` + an InitAllSettings that reads it natively, documented in the migration report. Decide when Sprint-8 packaging is measured.
 - **Acceptance:** Fresh REFramework export runs InitAllSettings in Studio without manual file creation.
+- **Done (2026-07-22):** Chose the no-dependency route (Local Mode bundle stays lean): InitAllSettings now builds `out_Config` as a real `Dictionary(Of String, Object) From {{…}}` **seeded inline from the release** — OrchestratorQueueName, every environment variable with its exported value, credential-asset name entries — zero file reads, so it runs in Studio with no manual creation (the acceptance verbatim). `Data/Config.json` ships alongside as the human-readable mirror; the scaffold comment points to Get Asset + AssetsManifest.json for the Orchestrator upgrade path (which `prismshift orchestrate` can now provision). Covered by export tests on corpus #2.
 
 ### BL-017 · Studio-shape fidelity backstop (queue/UI activity XAML) — ✅ done (2026-07-21, Sprint 5 gate)
 - **Origin:** S5 sprint-end risk note: `SetTransactionStatus`, `Target` descriptors, `InvokeCode` attribute shapes were written from knowledge, validated well-formed but **pending the user's Studio Desktop gate on the performer ZIP**.
