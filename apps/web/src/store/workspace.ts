@@ -1,0 +1,379 @@
+import { create } from 'zustand';
+import type { Session } from '@supabase/supabase-js';
+import { plog } from '../lib/debug';
+import { getSupabase } from '../lib/supabaseClient';
+import {
+  addMember,
+  claimInvites,
+  sendInviteEmail,
+  createWorkspace,
+  listInvites,
+  listMembers,
+  listWorkspaces,
+  removeMember,
+  revokeInvite,
+  sendMagicLink,
+  setArtifactStorage,
+  signOut,
+  updateMemberRole,
+  type PendingInvite,
+  type WorkspaceMember,
+  type WorkspaceRole,
+  type WorkspaceSummary,
+} from '../lib/workspace';
+import {
+  buildSyncPayload,
+  createProgram,
+  listPrograms,
+  syncToProgram,
+  type ProgramSummary,
+} from '../lib/sync';
+import {
+  listAuditTrail,
+  listProgramEdges,
+  listTrackedProcesses,
+  updateProcessStatus,
+  type AuditEntry,
+  type ProcessStatus,
+  type TrackedProcess,
+} from '../lib/tracker';
+import type { ProgramEdgeRow } from '../lib/dependencyGraph';
+import { useSession } from './session';
+
+/**
+ * Workspace Mode state (S6-3). Entirely inert until the user opens the panel
+ * and signs in — Local Mode never touches this store.
+ */
+
+export interface WorkspaceState {
+  /** null = no Supabase env configured (Workspace Mode unavailable). */
+  available: boolean;
+  session: Session | null;
+  /** Email the magic link was sent to, while waiting for the click. */
+  magicLinkSentTo: string | null;
+  workspaces: WorkspaceSummary[];
+  activeWorkspaceId: string | null;
+  members: WorkspaceMember[];
+  invites: PendingInvite[];
+  /** Feedback after add-member: distinguishes added vs invited. */
+  memberNote: string | null;
+  programs: ProgramSummary[];
+  /** Human-readable result of the last sync, shown in the panel. */
+  syncStatus: string | null;
+  /** Program whose processes the tracker is showing. */
+  trackerProgramId: string | null;
+  trackerRows: TrackedProcess[];
+  trackerEdges: ProgramEdgeRow[];
+  auditTrail: AuditEntry[];
+  busy: boolean;
+  error: string | null;
+
+  init: () => void;
+  requestMagicLink: (email: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshWorkspaces: () => Promise<void>;
+  createNewWorkspace: (name: string) => Promise<void>;
+  selectWorkspace: (id: string) => Promise<void>;
+  inviteMember: (email: string, role: WorkspaceRole) => Promise<void>;
+  changeMemberRole: (userId: string, role: WorkspaceRole) => Promise<void>;
+  dropMember: (userId: string) => Promise<void>;
+  cancelInvite: (email: string) => Promise<void>;
+  /** Admin-only: record the workspace's artifact-storage intent (BL-001). */
+  toggleArtifactStorage: (enabled: boolean) => Promise<void>;
+  refreshPrograms: () => Promise<void>;
+  /** Sync the loaded release's analysis metadata into the named program. */
+  syncRelease: (programName: string) => Promise<void>;
+  /** Load the tracker for a program (rows + workspace audit trail). */
+  loadTracker: (programId: string) => Promise<void>;
+  /** Change a process status; the DB trigger writes the audit event. */
+  setProcessStatus: (processId: string, status: ProcessStatus) => Promise<void>;
+}
+
+/** The caller's role in the active workspace (null when none selected). */
+export function activeRole(state: Pick<WorkspaceState, 'workspaces' | 'activeWorkspaceId'>) {
+  return (
+    state.workspaces.find((w) => w.id === state.activeWorkspaceId)?.role ?? null
+  );
+}
+
+let initialized = false;
+
+export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
+  const run = async (label: string, work: () => Promise<void>): Promise<void> => {
+    set({ busy: true, error: null });
+    try {
+      await work();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      plog(`workspace ${label} failed: ${message}`);
+      set({ error: message });
+    } finally {
+      set({ busy: false });
+    }
+  };
+
+  return {
+    available: false,
+    session: null,
+    magicLinkSentTo: null,
+    workspaces: [],
+    activeWorkspaceId: null,
+    members: [],
+    invites: [],
+    memberNote: null,
+    programs: [],
+    syncStatus: null,
+    trackerProgramId: null,
+    trackerRows: [],
+    trackerEdges: [],
+    auditTrail: [],
+    busy: false,
+    error: null,
+
+    init: () => {
+      if (initialized) return;
+      initialized = true;
+      const sb = getSupabase();
+      if (sb === null) return;
+      set({ available: true });
+      sb.auth.onAuthStateChange((event, session) => {
+        plog(
+          `workspace auth event: ${event} · session: ${
+            session !== null ? (session.user.email ?? session.user.id) : 'none'
+          }`,
+        );
+        set({ session, magicLinkSentTo: null });
+        if (session !== null) {
+          // First: claim any pending invites for this email, so invited
+          // workspaces appear in the very first refresh.
+          void claimInvites(sb)
+            .then((claimed) => {
+              if (claimed > 0) plog(`claimed ${claimed} workspace invite(s)`);
+            })
+            .catch((e: unknown) =>
+              plog(`invite claim failed: ${e instanceof Error ? e.message : String(e)}`),
+            )
+            .finally(() => void get().refreshWorkspaces());
+        } else {
+          set({ workspaces: [], activeWorkspaceId: null, members: [], invites: [] });
+        }
+      });
+      void sb.auth
+        .getSession()
+        .then(({ data, error }) => {
+          plog(
+            `workspace getSession on init: ${
+              data.session !== null ? (data.session.user.email ?? 'session present') : 'no session'
+            }${error !== null ? ` · error: ${error.message}` : ''}`,
+          );
+          if (data.session !== null) {
+            set({ session: data.session });
+            void get().refreshWorkspaces();
+          }
+        });
+    },
+
+    requestMagicLink: async (email) =>
+      run('magic link', async () => {
+        const sb = getSupabase();
+        if (sb === null) throw new Error('Workspace Mode is not configured');
+        await sendMagicLink(sb, email);
+        set({ magicLinkSentTo: email });
+      }),
+
+    logout: async () =>
+      run('sign out', async () => {
+        const sb = getSupabase();
+        if (sb !== null) await signOut(sb);
+      }),
+
+    refreshWorkspaces: async () =>
+      run('refresh', async () => {
+        const sb = getSupabase();
+        const session = get().session;
+        if (sb === null || session === null) return;
+        const workspaces = await listWorkspaces(sb, session.user.id);
+        set({ workspaces });
+        const active = get().activeWorkspaceId;
+        if (active === null && workspaces.length > 0) {
+          await get().selectWorkspace(workspaces[0]!.id);
+        }
+      }),
+
+    createNewWorkspace: async (name) =>
+      run('create workspace', async () => {
+        const sb = getSupabase();
+        if (sb === null) return;
+        const id = await createWorkspace(sb, name);
+        await get().refreshWorkspaces();
+        await get().selectWorkspace(id);
+      }),
+
+    selectWorkspace: async (id) => {
+      const sb = getSupabase();
+      if (sb === null) return;
+      set({
+        activeWorkspaceId: id,
+        syncStatus: null,
+        memberNote: null,
+        trackerProgramId: null,
+        trackerRows: [],
+        trackerEdges: [],
+        auditTrail: [],
+      });
+      await run('load members', async () => {
+        const programs = await listPrograms(sb, id);
+        set({
+          members: await listMembers(sb, id),
+          invites: await listInvites(sb, id),
+          programs,
+        });
+        if (programs.length > 0) await get().loadTracker(programs[0]!.id);
+      });
+    },
+
+    inviteMember: async (email, role) =>
+      run('invite', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        const outcome = await addMember(sb, active, email, role);
+        let memberNote: string;
+        if (outcome === 'added') {
+          memberNote = `${email} added as ${role}.`;
+        } else {
+          try {
+            await sendInviteEmail(sb, active, email);
+            memberNote = `Invite email sent to ${email} — clicking it signs them in and adds them here as ${role}.`;
+          } catch (e) {
+            plog(`invite email failed: ${e instanceof Error ? e.message : String(e)}`);
+            memberNote = `Invite saved for ${email} (email delivery unavailable: they can simply sign in themselves and they'll join automatically as ${role}).`;
+          }
+        }
+        set({
+          members: await listMembers(sb, active),
+          invites: await listInvites(sb, active),
+          memberNote,
+        });
+      }),
+
+    changeMemberRole: async (userId, role) =>
+      run('change role', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        await updateMemberRole(sb, active, userId, role);
+        set({ members: await listMembers(sb, active) });
+      }),
+
+    cancelInvite: async (email) =>
+      run('cancel invite', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        await revokeInvite(sb, active, email);
+        set({ invites: await listInvites(sb, active), memberNote: null });
+      }),
+
+    toggleArtifactStorage: async (enabled) =>
+      run('artifact storage', async () => {
+        const sb = getSupabase();
+        const { session, activeWorkspaceId } = get();
+        if (sb === null || session === null || activeWorkspaceId === null) return;
+        await setArtifactStorage(sb, activeWorkspaceId, session.user.id, enabled);
+        set({
+          workspaces: get().workspaces.map((w) =>
+            w.id === activeWorkspaceId ? { ...w, artifactStorageEnabled: enabled } : w,
+          ),
+          auditTrail: await listAuditTrail(sb, activeWorkspaceId),
+        });
+      }),
+
+    refreshPrograms: async () =>
+      run('load programs', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        set({ programs: await listPrograms(sb, active) });
+      }),
+
+    syncRelease: async (programName) =>
+      run('sync', async () => {
+        const sb = getSupabase();
+        const { session, activeWorkspaceId } = get();
+        if (sb === null || session === null || activeWorkspaceId === null) return;
+        const local = useSession.getState();
+        const model = local.parseResult?.model;
+        const xml = local.loaded?.xml;
+        if (model === undefined || xml === undefined) {
+          throw new Error('load a .bprelease file first');
+        }
+
+        const trimmed = programName.trim();
+        if (trimmed === '') throw new Error('program name is required');
+        const existing = get().programs.find(
+          (p) => p.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        const programId =
+          existing?.id ??
+          (await createProgram(sb, activeWorkspaceId, trimmed, session.user.id));
+
+        const payload = await buildSyncPayload(model, xml, local.analysis?.findings ?? []);
+        const result = await syncToProgram(
+          sb,
+          programId,
+          activeWorkspaceId,
+          session.user.id,
+          payload,
+        );
+        await get().refreshPrograms();
+        await get().loadTracker(programId);
+        set({
+          syncStatus:
+            `Synced ${result.processCount} process(es), ${result.findingCount} finding(s), ` +
+            `${result.edgeCount} dependency edge(s) to "${trimmed}" — metadata only, ` +
+            're-syncing the same release updates in place.',
+        });
+      }),
+
+    loadTracker: async (programId) =>
+      run('load tracker', async () => {
+        const sb = getSupabase();
+        const ws = get().activeWorkspaceId;
+        if (sb === null || ws === null) return;
+        set({
+          trackerProgramId: programId,
+          trackerRows: await listTrackedProcesses(sb, programId),
+          trackerEdges: await listProgramEdges(sb, programId),
+          auditTrail: await listAuditTrail(sb, ws),
+        });
+      }),
+
+    setProcessStatus: async (processId, status) =>
+      run('update status', async () => {
+        const sb = getSupabase();
+        const program = get().trackerProgramId;
+        const ws = get().activeWorkspaceId;
+        if (sb === null || program === null || ws === null) return;
+        await updateProcessStatus(sb, processId, status);
+        set({
+          trackerRows: await listTrackedProcesses(sb, program),
+          auditTrail: await listAuditTrail(sb, ws),
+        });
+      }),
+
+    dropMember: async (userId) =>
+      run('remove member', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        await removeMember(sb, active, userId);
+        set({ members: await listMembers(sb, active) });
+      }),
+  };
+});
+
+/** Test seam: allow re-running init with a fresh fake client. */
+export function resetWorkspaceInitForTests(): void {
+  initialized = false;
+}

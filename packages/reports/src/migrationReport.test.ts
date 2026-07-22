@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadSample } from '@prismshift/corpus';
 import { parseBpRelease } from '@prismshift/parser';
 import { convertObject, convertProcess } from '@prismshift/transformer';
-import { buildMigrationReport } from './migrationReport';
+import { buildMigrationReport, estimateEffortHours } from './migrationReport';
 
 async function performerReport() {
   const { xml } = await loadSample('02-realistic-mid-size');
@@ -54,6 +54,17 @@ describe('buildMigrationReport (S5-5)', () => {
 
     const again = (await performerReport()).report;
     expect(again).toBe(report);
+  });
+
+  it('estimateEffortHours matches the report total (S6-4 sync ships this number)', async () => {
+    const { xml } = await loadSample('02-realistic-mid-size');
+    const { model } = await parseBpRelease(xml);
+    const process = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const conversion = convertProcess(model, process);
+    const objects = [convertObject(model, model.objects[0]!)];
+    const report = buildMigrationReport(conversion, objects);
+    const hours = estimateEffortHours(conversion, objects);
+    expect(report).toContain(`**${hours.toFixed(1)}**`);
   });
 
   it('handles image/OCR selectors as risky in the estimate', async () => {

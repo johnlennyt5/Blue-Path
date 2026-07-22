@@ -14,6 +14,34 @@ const EFFORT = {
   extraMinutesPerRiskySelector: 20,
 };
 
+/**
+ * Planning-effort estimate in hours (1 decimal) — the same formula the
+ * report's effort table prints. Exported so metadata sync (S6-4) ships the
+ * identical number the report shows.
+ */
+export function estimateEffortHours(
+  processConversion: ProcessConversion,
+  objectConversions: ObjectConversion[],
+): number {
+  const allPunch = [
+    ...processConversion.punchList,
+    ...objectConversions.flatMap((o) => o.punchList),
+  ];
+  const allSelectors = objectConversions.flatMap((o) => o.selectors);
+  const riskySelectors = allSelectors.filter(
+    (s) => s.strategy === 'image-ocr' || s.confidence < 0.5,
+  );
+  const totalStages =
+    processConversion.totalStageCount +
+    objectConversions.reduce((n, o) => n + o.totalStageCount, 0);
+  const totalMinutes =
+    totalStages * EFFORT.reviewMinutesPerStage +
+    allPunch.length * EFFORT.minutesPerPunchItem +
+    allSelectors.length * EFFORT.minutesPerSelector +
+    riskySelectors.length * EFFORT.extraMinutesPerRiskySelector;
+  return Math.round((totalMinutes / 60) * 10) / 10;
+}
+
 function punchTable(issues: ConversionIssue[]): string {
   if (issues.length === 0) return '_None — nothing needs manual work._\n';
   const rows = issues
