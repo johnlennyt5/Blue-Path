@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import type { AutomationModel } from '@prismshift/ir';
+import type { AutomationModel, BusinessObjectNode } from '@prismshift/ir';
 import { scoreObject, scoreProcess } from '@prismshift/rules';
 import type { Finding } from '@prismshift/ir';
+import { buildObjectLibraryExport } from '@prismshift/reports';
 import { buildProcessExport, downloadBlob, projectZipBlob } from '../lib/exportProject';
 import { GRADE_COLORS } from '../lib/findingView';
 import { sanitizeFileName } from '@prismshift/transformer';
@@ -89,9 +90,26 @@ export function OwnerDetail({
           </button>
         )}
         {!process && (
-          <span className="ml-auto text-xs text-slate-500">
-            Ships inside each process ZIP that calls it (Objects\…)
-          </span>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-xs text-slate-500">
+              Ships inside each process ZIP (Objects\…) — or as a standalone library:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const library = buildObjectLibraryExport(model, owner as BusinessObjectNode);
+                void projectZipBlob(library.project).then((blob) => {
+                  downloadBlob(blob, `${library.project.name.replace(/[^A-Za-z0-9_-]+/g, '_')}-library.zip`);
+                  setExportNote(
+                    'Library project: publish it to your feed, then reference it from consuming processes (see LIBRARY_README.md inside).',
+                  );
+                });
+              }}
+              className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-500/20"
+            >
+              ⬇ Library project
+            </button>
+          </div>
         )}
         {exportNote && <span className="text-xs text-slate-400">{exportNote}</span>}
       </div>

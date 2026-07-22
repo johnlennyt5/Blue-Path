@@ -52,11 +52,13 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 
 ## B. Items raised during Sprints 1–5 (conversation-sourced)
 
-### BL-008 · UiPath **Library** project export for objects
+### BL-008 · UiPath **Library** project export for objects — ✅ done (2026-07-22, backlog-library-export; auto-rewired invocations residual, see below)
 - **Origin:** 2026-07-21, Sprint-5 user review ("why does Invoice Entry VBO have no zip?").
 - **Context/current behavior:** Objects are not standalone projects; their workflows are **copied** into every calling process's ZIP under `Objects\<Object>\`. Correct and self-contained, but N processes sharing a VBO get N copies — divergence risk after manual edits, and it ignores UiPath's proper reuse mechanism.
 - **Expected behavior:** Optional per-object export as a UiPath **Library** project (`designOptions.outputType: "Library"`, publishable as NuGet); processes then reference the library as a dependency in `project.json` instead of carrying copies, and their `InvokeWorkflowFile` calls become library-activity invocations. A toggle chooses copy-mode (default, zero-infrastructure) vs library-mode (requires a feed/Orchestrator to host the package). MNT-003's "consolidate clones into a library" recommendation should link to this.
 - **Acceptance:** Library project opens in Studio and publishes; a consuming process restores it from a local feed and runs; both modes covered by tests; migration report states which mode was used and why.
+- **Done (2026-07-22):** `buildLibraryProject` (transformer: outputType Library, workflows at root = public activities, one entryPoint per workflow) + `buildObjectLibraryExport` (reports: adds LIBRARY_README.md with the mandatory selector checklist). Delivery toggle `ObjectDelivery = 'embed' | 'library'` on `buildProcessExport`/`buildReleaseExport`: library mode drops the Objects/ copies, adds `<Library>: [1.0.0]` to consuming project.json dependencies, punch-lists the per-object install+swap step, and bundles one `Libraries/<Object>/` project shared by all consumers. Surfaced in: object detail ("⬇ Library project" button), release bundle ("shared objects as libraries" checkbox), CLI (`--objects library`), and MNT-003's recommendation now points at the feature. 6 tests; both modes covered; embed regression-locked.
+- **Residual (documented, not guessed):** automatic rewiring of `InvokeWorkflowFile` into compiled library activities needs ground truth for library-activity XAML (no library template exists on the dev machine to copy from — BL-017 doctrine). Punch list carries the manual swap until a published library provides the shape. Studio open/publish gate = user's next test pass.
 
 ### BL-009 · Studio Web / cross-platform target
 - **Origin:** 2026-07-21, the "Invalid file type" incident — user tried loading XAML into Studio Web/Maestro (cloud.uipath.com), which cannot open Windows XAML projects.

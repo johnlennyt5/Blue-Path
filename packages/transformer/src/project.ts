@@ -78,13 +78,19 @@ export function buildProjectJson(options: {
   name: string;
   description: string;
   mainFile: string;
+  /** 'Library' emits a publishable library (BL-008); default 'Process'. */
+  outputType?: 'Process' | 'Library';
+  /** Additional project.json dependencies (e.g. exported object libraries). */
+  extraDependencies?: Record<string, string>;
+  /** Entry points; defaults to [mainFile]. Libraries list every workflow. */
+  entryPointFiles?: string[];
 }): string {
   const projectJson = {
     name: options.name,
     projectId: deterministicGuid(options.name),
     description: options.description,
     main: options.mainFile,
-    dependencies: DEPENDENCIES,
+    dependencies: { ...DEPENDENCIES, ...(options.extraDependencies ?? {}) },
     webServices: [],
     entitiesStores: [],
     schemaVersion: '4.0',
@@ -106,7 +112,7 @@ export function buildProjectJson(options: {
     },
     designOptions: {
       projectProfile: 'Development',
-      outputType: 'Process',
+      outputType: options.outputType ?? 'Process',
       libraryOptions: {
         includeOriginalXaml: false,
         privateWorkflows: [],
@@ -116,14 +122,12 @@ export function buildProjectJson(options: {
       saveToCloud: false,
     },
     expressionLanguage: 'VisualBasic',
-    entryPoints: [
-      {
-        filePath: options.mainFile,
-        uniqueId: deterministicGuid(`${options.name}/${options.mainFile}`),
-        input: [],
-        output: [],
-      },
-    ],
+    entryPoints: (options.entryPointFiles ?? [options.mainFile]).map((filePath) => ({
+      filePath,
+      uniqueId: deterministicGuid(`${options.name}/${filePath}`),
+      input: [],
+      output: [],
+    })),
     isTemplate: false,
     templateProjectData: {},
     publishData: {},
@@ -371,4 +375,41 @@ export function buildProject(options: BuildProjectOptions): UiPathProject {
     files.push({ path: workflow.path, content: emitWorkflowXaml(workflow.doc) });
   }
   return { name: options.name, layout: 'reframework', files };
+}
+
+// ---------------------------------------------------------------------------
+// Library projects (BL-008): a VBO exported as a publishable UiPath library.
+// Workflows live at the project root — Studio compiles each public root
+// workflow into an activity when the library is published.
+// ---------------------------------------------------------------------------
+
+export interface BuildLibraryOptions {
+  name: string;
+  description?: string;
+  workflows: { path: string; doc: WorkflowDoc }[];
+}
+
+export function buildLibraryProject(options: BuildLibraryOptions): UiPathProject {
+  const files: ProjectFile[] = [];
+  // Objects/<Object>/<Page>.xaml → <Page>.xaml (root = public activity)
+  const rootWorkflows = options.workflows.map((workflow) => ({
+    path: workflow.path.split('/').pop()!,
+    doc: workflow.doc,
+  }));
+  files.push({
+    path: 'project.json',
+    content: buildProjectJson({
+      name: options.name,
+      description:
+        options.description ??
+        `Converted from Blue Prism VBO "${options.name}" by PrismShift — publish to a feed and reference from consuming processes.`,
+      mainFile: rootWorkflows[0]?.path ?? 'Main.xaml',
+      outputType: 'Library',
+      entryPointFiles: rootWorkflows.map((w) => w.path),
+    }),
+  });
+  for (const workflow of rootWorkflows) {
+    files.push({ path: workflow.path, content: emitWorkflowXaml(workflow.doc) });
+  }
+  return { name: options.name, layout: 'plain', files };
 }

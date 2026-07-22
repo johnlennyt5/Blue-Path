@@ -108,7 +108,7 @@ const TEMPLATES: Record<string, RecommendationTemplate> = {
     id: 'REC-SHARED-LIBRARY',
     title: 'Consolidate duplicate objects into a library',
     practice:
-      'Merge near-duplicate objects into one implementation and migrate it as a single UiPath library project consumed as a dependency by every process.',
+      'Merge near-duplicate objects into one implementation and migrate it as a single UiPath library project consumed as a dependency by every process. PrismShift can export any object as a publishable library: object view → "⬇ Library project", or bundle with "shared objects as libraries".',
   },
   'MNT-004': {
     id: 'REC-DISPATCHER-PERFORMER',
