@@ -1,0 +1,60 @@
+{
+  "id": "aa-01-invoice-loader",
+  "file": "aa-01-invoice-loader.bot",
+  "description": "First Automation Anywhere (A360) corpus sample: a nightly invoice-loading bot with a table loop, a high-value branch calling a separate approval task, a legacy terminal command (unmapped on purpose), and three planted issues: a runtime password startup parameter (SEC-002), a hardcoded UNC source path (SEC-004), and no error handler at all (REL-001). Proves the vendor-neutral IR: rules, summaries, and conversion run unchanged.",
+  "expectedParse": {
+    "errors": 0,
+    "warnings": 1,
+    "bpVersion": "A360 1.0.0",
+    "packageName": "Invoice Loader",
+    "counts": {
+      "processes": 1,
+      "objects": 0,
+      "workQueues": 0,
+      "environmentVars": 0,
+      "credentialRefs": 0
+    },
+    "processes": [
+      {
+        "name": "Invoice Loader",
+        "pages": ["Main Flow"],
+        "stageCount": 14,
+        "dataItemCount": 4,
+        "startupParams": ["ApiPassword"],
+        "outputs": ["RowCount"],
+        "stageKinds": {
+          "start": 1,
+          "note": 1,
+          "alert": 2,
+          "calculation": 2,
+          "loopStart": 1,
+          "decision": 1,
+          "action": 2,
+          "anchor": 1,
+          "loopEnd": 1,
+          "generic": 1,
+          "end": 1
+        }
+      }
+    ],
+    "objects": []
+  },
+  "expectedFindings": [
+    {
+      "ruleId": "REL-001",
+      "severity": "high",
+      "processName": "Invoice Loader"
+    },
+    {
+      "ruleId": "SEC-002",
+      "severity": "high",
+      "processName": "Invoice Loader"
+    },
+    {
+      "ruleId": "SEC-004",
+      "severity": "medium",
+      "processName": "Invoice Loader"
+    }
+  ],
+  "notes": "The terminalEmulatorConnect command is deliberately unmapped: it must surface as a generic stage plus exactly one parse warning (never silently dropped). runTask targets are external bots — conversion punch-lists them honestly rather than inventing workflows."
+}

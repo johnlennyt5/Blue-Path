@@ -1,0 +1,23 @@
+{
+  "name": "@prismshift/parser-aa",
+  "version": "0.1.0",
+  "description": "Automation Anywhere (A360) source adapter: .bot JSON → the PrismShift IR. Proof of the vendor-neutral IR — zero changes to rules/transformer/reports.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@prismshift/ir": "workspace:*"
+  },
+  "devDependencies": {
+    "@prismshift/corpus": "workspace:*",
+    "@prismshift/reports": "workspace:*",
+    "@prismshift/rules": "workspace:*",
+    "@prismshift/transformer": "workspace:*",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}
