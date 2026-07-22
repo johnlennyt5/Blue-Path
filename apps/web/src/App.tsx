@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { APP_NAME } from './lib/appInfo';
 import { currentPrivacyMode } from './lib/workspace';
 import { BUILD_TIME } from './lib/buildInfo';
+import { buildAuditReportData, renderAuditPdf } from './lib/auditReport';
 import { buildReleaseExport, downloadBlob, releaseZipBlob } from './lib/exportProject';
 import { formatBytes } from './lib/fileIntake';
 import { DropZone } from './components/DropZone';
@@ -146,6 +147,24 @@ export default function App() {
                   className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-1.5 text-sm text-sky-300 hover:bg-sky-500/20"
                 >
                   ⬇ Download all UiPath projects ({model.processes.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const data = buildAuditReportData(
+                      model,
+                      findings,
+                      new Date().toISOString().slice(0, 16).replace('T', ' '),
+                    );
+                    const name = (model.meta.packageName || 'release').replace(/[^A-Za-z0-9_-]+/g, '_');
+                    downloadBlob(renderAuditPdf(data), `${name}-audit-report.pdf`);
+                    setBundleNote(
+                      `Audit report generated client-side: rollup + ${data.sections.length} component section(s), findings, coverage, sign-off block.`,
+                    );
+                  }}
+                  className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-500/20"
+                >
+                  ⬇ Audit report (PDF)
                 </button>
                 {bundleNote && <span className="text-xs text-slate-400">{bundleNote}</span>}
               </div>

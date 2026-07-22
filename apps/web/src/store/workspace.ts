@@ -12,8 +12,10 @@ import {
   listWorkspaces,
   removeMember,
   revokeInvite,
+  purgeWorkspace,
   sendMagicLink,
   setArtifactStorage,
+  setRetentionDays,
   signOut,
   updateMemberRole,
   type PendingInvite,
@@ -80,6 +82,10 @@ export interface WorkspaceState {
   cancelInvite: (email: string) => Promise<void>;
   /** Admin-only: record the workspace's artifact-storage intent (BL-001). */
   toggleArtifactStorage: (enabled: boolean) => Promise<void>;
+  /** Admin-only: audit retention in days (null = keep everything). */
+  updateRetention: (days: number | null) => Promise<void>;
+  /** Admin-only: hard-delete synced content, prune audit per retention. */
+  purgeActiveWorkspace: () => Promise<void>;
   refreshPrograms: () => Promise<void>;
   /** Sync the loaded release's analysis metadata into the named program. */
   syncRelease: (programName: string) => Promise<void>;
@@ -286,6 +292,36 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
             w.id === activeWorkspaceId ? { ...w, artifactStorageEnabled: enabled } : w,
           ),
           auditTrail: await listAuditTrail(sb, activeWorkspaceId),
+        });
+      }),
+
+    updateRetention: async (days) =>
+      run('retention', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        await setRetentionDays(sb, active, days);
+        set({
+          workspaces: get().workspaces.map((w) =>
+            w.id === active ? { ...w, retentionDays: days } : w,
+          ),
+        });
+      }),
+
+    purgeActiveWorkspace: async () =>
+      run('purge', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        const result = await purgeWorkspace(sb, active);
+        set({
+          programs: [],
+          trackerProgramId: null,
+          trackerRows: [],
+          trackerEdges: [],
+          auditTrail: await listAuditTrail(sb, active),
+          syncStatus: null,
+          memberNote: `Workspace purged: ${result.programsDeleted} program(s) hard-deleted, ${result.auditPruned} old audit event(s) pruned. Recorded in the audit trail.`,
         });
       }),
 

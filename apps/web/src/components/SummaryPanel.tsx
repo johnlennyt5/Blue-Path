@@ -1,5 +1,6 @@
 import type { AutomationModel, BusinessObjectNode, ProcessNode } from '@prismshift/ir';
 import { summarizeObject, summarizeProcess } from '@prismshift/reports';
+import { AiNarrative } from './AiNarrative';
 
 function Chips({ title, items, empty }: { title: string; items: string[]; empty: string }) {
   return (
@@ -151,6 +152,8 @@ export function SummaryPanel({
           ))}
         </div>
       </div>
+
+      <AiNarrative model={model} owner={owner} />
     </div>
   );
 }

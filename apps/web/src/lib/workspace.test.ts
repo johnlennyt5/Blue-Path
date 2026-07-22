@@ -11,8 +11,10 @@ import {
   can,
   claimInvites,
   currentPrivacyMode,
+  purgeWorkspace,
   sendInviteEmail,
   setArtifactStorage,
+  setRetentionDays,
   createWorkspace,
   listMembers,
   listWorkspaces,
@@ -99,6 +101,36 @@ describe('setArtifactStorage (S6-7: admin-only flag, audited)', () => {
   });
 });
 
+describe('S7-5: retention + purge', () => {
+  it('setRetentionDays: zero rows (non-admin) → admin-only error', async () => {
+    const select = vi.fn().mockResolvedValue({ data: [], error: null });
+    const eq = vi.fn(() => ({ select }));
+    const update = vi.fn(() => ({ eq }));
+    const sb = fakeSupabase({ from: vi.fn(() => ({ update })) });
+    await expect(setRetentionDays(sb, 'ws1', 30)).rejects.toThrow(/admin/);
+  });
+
+  it('purgeWorkspace invokes the function and returns counts', async () => {
+    const invoke = vi.fn().mockResolvedValue({
+      data: { ok: true, programs_deleted: 2, audit_events_pruned: 7 },
+      error: null,
+    });
+    const sb = fakeSupabase({ functions: { invoke } });
+    await expect(purgeWorkspace(sb, 'ws1')).resolves.toEqual({
+      programsDeleted: 2,
+      auditPruned: 7,
+    });
+    expect(invoke).toHaveBeenCalledWith('purge-workspace', { body: { workspace_id: 'ws1' } });
+  });
+
+  it('purgeWorkspace surfaces the admin-only gate', async () => {
+    const context = new Response(JSON.stringify({ error: 'only workspace admins can purge' }), { status: 403 });
+    const invoke = vi.fn().mockResolvedValue({ data: null, error: { message: 'non-2xx', context } });
+    const sb = fakeSupabase({ functions: { invoke } });
+    await expect(purgeWorkspace(sb, 'ws1')).rejects.toThrow(/only workspace admins/);
+  });
+});
+
 describe('workspace API calls', () => {
   it('sendMagicLink calls signInWithOtp with a redirect back to the app', async () => {
     const sb = fakeSupabase();
@@ -130,7 +162,9 @@ describe('workspace API calls', () => {
         if (table === 'workspaces') {
           return {
             select: vi.fn().mockResolvedValue({
-              data: [{ id: 'ws1', name: 'One', artifact_storage_enabled: false }],
+              data: [
+                { id: 'ws1', name: 'One', artifact_storage_enabled: false, retention_days: 90 },
+              ],
               error: null,
             }),
           };
@@ -146,7 +180,7 @@ describe('workspace API calls', () => {
       }),
     });
     await expect(listWorkspaces(sb, 'me')).resolves.toEqual([
-      { id: 'ws1', name: 'One', role: 'admin', artifactStorageEnabled: false },
+      { id: 'ws1', name: 'One', role: 'admin', artifactStorageEnabled: false, retentionDays: 90 },
     ]);
   });
 
