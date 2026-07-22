@@ -65,3 +65,23 @@ Objects/, manifests, MIGRATION_REPORT.md).
 ```yaml
 - run: npx prismshift analyze exports/*.bprelease --fail-below C --max-critical 0
 ```
+
+## Orchestrator setup (BL-007)
+
+Create the queues/assets a release needs, straight from its manifests:
+
+```
+prismshift orchestrate estate.bprelease --dry-run
+prismshift orchestrate estate.bprelease \
+  --url https://cloud.uipath.com/org/tenant/orchestrator_ \
+  --folder 12345 --token $PRISMSHIFT_ORCH_TOKEN
+```
+
+- Dry-run lists every intended creation without touching the API.
+- Live runs create queues (retry counts + unique-reference from the BP
+  definition), typed assets from environment variables, and credential
+  assets with CHANGE-ME placeholders (set real secrets in Orchestrator).
+- Existing items are skipped; individual failures are reported per item and
+  never abort the batch. Exit 1 if anything failed, 0 otherwise.
+- The token comes from `--token` or `PRISMSHIFT_ORCH_TOKEN`, lives in memory
+  for the run, and is never stored or logged.

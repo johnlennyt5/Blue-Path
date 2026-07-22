@@ -10,8 +10,15 @@ import { basename, dirname, join } from 'node:path';
 import { parseBpRelease } from '@prismshift/parser';
 import { buildReleaseExport } from '@prismshift/reports';
 import { analyzeAll, evaluateGates, type CliReport } from './analyze.js';
+import { applyPlan, planFromModel, type OrchestratorConfig } from './orchestrator.js';
 
-const USAGE = `prismshift analyze <files…> [options]
+const USAGE = `prismshift <command>
+
+Commands:
+  analyze <files…>       parse + 14-rule analysis (+ optional conversion)
+  orchestrate <file>     create the release's queues/assets in Orchestrator
+
+prismshift analyze <files…> [options]
 
 Options:
   --json                 machine-readable output (schemaVersion 1)
@@ -21,10 +28,18 @@ Options:
   --objects <mode>       with --convert: embed (default) or library
   -h, --help             this text
 
+prismshift orchestrate <file> --url <orchestratorUrl> --folder <folderId> [options]
+  --url <url>            e.g. https://cloud.uipath.com/org/tenant/orchestrator_
+  --folder <id>          Orchestrator folder (Organization Unit) id
+  --token <token>        bearer token; or set PRISMSHIFT_ORCH_TOKEN (never stored)
+  --dry-run              list intended creations without calling the API
+  --json                 machine-readable results
+
 Examples:
   prismshift analyze estate.bprelease --fail-below C
   prismshift analyze exports/*.bprelease --json > report.json
-  prismshift analyze estate.bprelease --convert ./uipath-out`;
+  prismshift analyze estate.bprelease --convert ./uipath-out
+  prismshift orchestrate estate.bprelease --url … --folder 123 --dry-run`;
 
 interface ParsedArgs {
   files: string[];
@@ -33,6 +48,42 @@ interface ParsedArgs {
   maxCritical?: number;
   convertDir?: string;
   objects: 'embed' | 'library';
+}
+
+export interface OrchestrateArgs {
+  command: 'orchestrate';
+  file: string;
+  url?: string;
+  folder?: string;
+  token?: string;
+  dryRun: boolean;
+  json: boolean;
+}
+
+export function parseOrchestrateArgs(argv: string[]): OrchestrateArgs | { error: string } {
+  const args: OrchestrateArgs = { command: 'orchestrate', file: '', dryRun: false, json: false };
+  for (let i = 1; i < argv.length; i++) {
+    const arg = argv[i]!;
+    if (arg === '--url') args.url = argv[++i];
+    else if (arg === '--folder') args.folder = argv[++i];
+    else if (arg === '--token') args.token = argv[++i];
+    else if (arg === '--dry-run') args.dryRun = true;
+    else if (arg === '--json') args.json = true;
+    else if (arg.startsWith('--')) return { error: `unknown option "${arg}"` };
+    else if (args.file === '') args.file = arg;
+    else return { error: 'orchestrate takes exactly one file' };
+  }
+  if (args.file === '') return { error: 'no input file given' };
+  if (!args.dryRun) {
+    if (args.url === undefined || args.folder === undefined) {
+      return { error: 'live runs need --url and --folder (or use --dry-run)' };
+    }
+    args.token = args.token ?? process.env['PRISMSHIFT_ORCH_TOKEN'];
+    if (args.token === undefined || args.token === '') {
+      return { error: 'live runs need --token or PRISMSHIFT_ORCH_TOKEN' };
+    }
+  }
+  return args;
 }
 
 export function parseArgs(argv: string[]): ParsedArgs | { error: string } {
@@ -88,6 +139,7 @@ export async function run(
   argv: string[],
   io: { out: (line: string) => void; err: (line: string) => void },
 ): Promise<number> {
+  if (argv[0] === 'orchestrate') return runOrchestrate(argv, io);
   const parsed = parseArgs(argv);
   if ('error' in parsed) {
     io.err(parsed.error === '' ? USAGE : `error: ${parsed.error}\n\n${USAGE}`);
@@ -145,6 +197,67 @@ export async function run(
   }
   return 0;
 }
+
+async function runOrchestrate(
+  argv: string[],
+  io: { out: (line: string) => void; err: (line: string) => void },
+  fetchImpl?: typeof fetch,
+): Promise<number> {
+  const parsed = parseOrchestrateArgs(argv);
+  if ('error' in parsed) {
+    io.err(`error: ${parsed.error}\n\n${USAGE}`);
+    return 3;
+  }
+  let xml: string;
+  try {
+    xml = await readFile(parsed.file, 'utf8');
+  } catch {
+    io.err(`error: cannot read "${parsed.file}"`);
+    return 3;
+  }
+  const { model, errors } = await parseBpRelease(xml);
+  if (errors.length > 0) {
+    for (const parseError of errors) io.err(`PARSE ERROR: ${parseError.message}`);
+    return 2;
+  }
+  const items = planFromModel(model);
+  if (items.length === 0) {
+    io.out('Nothing to create: the release declares no queues, environment variables, or credentials.');
+    return 0;
+  }
+
+  if (parsed.dryRun) {
+    if (parsed.json) {
+      io.out(JSON.stringify({ dryRun: true, items }, null, 2));
+    } else {
+      io.out(`Dry run — ${items.length} item(s) would be created:`);
+      for (const item of items) io.out(`  [${item.kind}] ${item.name} — ${item.detail}`);
+    }
+    return 0;
+  }
+
+  const config: OrchestratorConfig = {
+    baseUrl: parsed.url!.replace(/\/$/, ''),
+    folderId: parsed.folder!,
+    token: parsed.token!,
+  };
+  const results = await applyPlan(config, model, items, fetchImpl ?? fetch);
+  if (parsed.json) {
+    io.out(JSON.stringify({ dryRun: false, results: results.map(({ item, status, message }) => ({ ...item, status, message })) }, null, 2));
+  } else {
+    for (const result of results) {
+      const suffix = result.message !== undefined ? ` — ${result.message}` : '';
+      io.out(`  [${result.status.toUpperCase().padEnd(7)}] ${result.item.kind} ${result.item.name}${suffix}`);
+    }
+  }
+  const failed = results.filter((r) => r.status === 'failed').length;
+  io.err(
+    `\n${results.filter((r) => r.status === 'created').length} created · ${results.filter((r) => r.status === 'exists').length} existing · ${failed} failed`,
+  );
+  return failed > 0 ? 1 : 0;
+}
+
+export const _internal = { runOrchestrate };
 
 /* c8 ignore start */
 const invokedDirectly =
