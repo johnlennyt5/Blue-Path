@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Background, Controls, Handle, MiniMap, Position, ReactFlow } from '@xyflow/react';
+import {
+  Background,
+  Controls,
+  Handle,
+  MiniMap,
+  Position,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+} from '@xyflow/react';
 import type { NodeProps, ReactFlowInstance } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { BusinessObjectNode, ProcessNode } from '@prismshift/ir';
 import { buildFlowGraph } from '../lib/flowGraph';
-import type { FlowNode } from '../lib/flowGraph';
+import type { FlowEdge, FlowNode } from '../lib/flowGraph';
 import { useSession } from '../store/session';
 
 const KIND_NODE_STYLES: Record<string, string> = {
@@ -70,7 +79,7 @@ const LEGEND: { swatch: string; label: string }[] = [
 export function FlowView({ owner }: { owner: ProcessNode | BusinessObjectNode }) {
   const selection = useSession((s) => s.selection);
   const setFlowPage = useSession((s) => s.setFlowPage);
-  const [instance, setInstance] = useState<ReactFlowInstance | null>(null);
+  const [instance, setInstance] = useState<ReactFlowInstance<FlowNode, FlowEdge> | null>(null);
   const [showInferred, setShowInferred] = useState(true);
 
   const page = owner.pages.find((p) => p.id === selection?.pageId) ?? owner.pages[0];
@@ -84,11 +93,21 @@ export function FlowView({ owner }: { owner: ProcessNode | BusinessObjectNode })
     [page, highlightStageId, showInferred],
   );
 
+  // Managed state keeps React Flow's node-change pipeline flowing — with
+  // plain props and no onNodesChange, queued fitView calls can dead-end
+  // (found via the S6-6 graph's dead fit button; same latent bug here).
+  const [nodes, setNodes, onNodesChange] = useNodesState(graph.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(graph.edges);
+  useEffect(() => setNodes(graph.nodes), [graph.nodes, setNodes]);
+  useEffect(() => setEdges(graph.edges), [graph.edges, setEdges]);
+
   // Center the highlighted stage (deep-link target) once the canvas is live.
+  // No duration: animated fits ride on d3 transitions, which some browser
+  // environments silently kill.
   useEffect(() => {
     if (!instance) return;
     if (highlightStageId) {
-      void instance.fitView({ nodes: [{ id: highlightStageId }], maxZoom: 1.2, duration: 300 });
+      void instance.fitView({ nodes: [{ id: highlightStageId }], maxZoom: 1.2 });
     } else {
       void instance.fitView({ maxZoom: 1 });
     }
@@ -130,8 +149,10 @@ export function FlowView({ owner }: { owner: ProcessNode | BusinessObjectNode })
 
       <div className="h-[540px] rounded-xl border border-slate-800 bg-slate-950">
         <ReactFlow
-          nodes={graph.nodes}
-          edges={graph.edges}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           onInit={setInstance}
           nodesDraggable={false}

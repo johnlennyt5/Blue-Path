@@ -31,3 +31,20 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  # S6-2: RLS isolation proven on every push — the pgTAP suite must show
+  # cross-workspace access denied, role gates enforced, audit log immutable.
+  rls-isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start local database
+        run: supabase db start
+
+      - name: pgTAP RLS suite
+        run: supabase test db

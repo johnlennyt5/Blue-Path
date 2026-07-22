@@ -1,12 +1,16 @@
-import { useState } from 'react';
-import { APP_NAME, DEFAULT_MODE, modeLabel } from './lib/appInfo';
+import { useEffect, useState } from 'react';
+import { APP_NAME } from './lib/appInfo';
+import { currentPrivacyMode } from './lib/workspace';
 import { BUILD_TIME } from './lib/buildInfo';
 import { buildReleaseExport, downloadBlob, releaseZipBlob } from './lib/exportProject';
 import { formatBytes } from './lib/fileIntake';
 import { DropZone } from './components/DropZone';
 import { OwnerCards } from './components/OwnerCards';
 import { OwnerDetail } from './components/OwnerDetail';
+import { MigrationTracker } from './components/MigrationTracker';
+import { WorkspacePanel } from './components/WorkspacePanel';
 import { useSession } from './store/session';
+import { useWorkspaceStore } from './store/workspace';
 
 export default function App() {
   const loaded = useSession((s) => s.loaded);
@@ -16,6 +20,16 @@ export default function App() {
   const selection = useSession((s) => s.selection);
   const reset = useSession((s) => s.reset);
   const [bundleNote, setBundleNote] = useState<string | null>(null);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+
+  // Init at app load — the magic-link redirect carries the token in the URL
+  // hash, and the client must exist right then to consume it (not only when
+  // the panel is first opened).
+  useEffect(() => useWorkspaceStore.getState().init(), []);
+
+  const signedIn = useWorkspaceStore((s) => s.session !== null);
+  const activeWorkspaceId = useWorkspaceStore((s) => s.activeWorkspaceId);
+  const mode = currentPrivacyMode(signedIn, activeWorkspaceId);
 
   const model = parseResult?.model;
   const findings = analysis?.findings ?? [];
@@ -27,11 +41,29 @@ export default function App() {
           <h1 className="text-xl font-semibold tracking-tight">{APP_NAME}</h1>
           <p className="font-mono text-[10px] text-slate-600">build {BUILD_TIME}</p>
         </div>
-        <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-          {modeLabel(DEFAULT_MODE)} — data stays in your browser
-        </span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setWorkspaceOpen((open) => !open)}
+            className="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:border-slate-500 hover:text-slate-100"
+          >
+            {workspaceOpen ? 'Workspace ▴' : 'Workspace ▾'}
+          </button>
+          <span
+            title={mode.description}
+            className={
+              mode.key === 'workspace'
+                ? 'rounded-full border border-violet-500/40 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-300'
+                : 'rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400'
+            }
+          >
+            {mode.label}
+          </span>
+        </div>
       </header>
       <main className="mx-auto max-w-5xl px-6 py-10">
+        {workspaceOpen && <WorkspacePanel onClose={() => setWorkspaceOpen(false)} />}
+        {workspaceOpen && <MigrationTracker />}
         {!loaded && (
           <>
             <h2 className="text-center text-2xl font-semibold">
