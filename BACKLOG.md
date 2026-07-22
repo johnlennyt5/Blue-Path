@@ -67,7 +67,7 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Origin:** 2026-07-21 user question ("I thought UiPath ran on BPMN files").
 - **Decision:** BPMN in UiPath is Maestro's *orchestration* layer; robot logic remains XAML. BP processes map to XAML processes. Generating Maestro BPMN that orchestrates our generated processes is a possible future product on top — record interest here if it recurs; not scoped further.
 
-### BL-011 · Alert stage conversion
+### BL-011 · Alert stage conversion — ✅ done (2026-07-22, backlog-quick-wins)
 - **Origin:** Sprint 5; converter currently emits a TODO comment + punch entry for `alert` stages; the Conversion tab labels them "— (alert stage pending)". Corpus: the Monolith's "Log Customer Detail".
 - **Expected behavior:** `alert` → `ui:LogMessage` (Level Info) with the translated message expression — plus a guard: if the message triggered SEC-003 (PII to logs), the emitted activity should carry a comment noting the finding so nobody ships PII logging by accident.
 - **Acceptance:** Monolith alert converts; punch entry disappears; SEC-003-flagged alerts carry the warning comment; coverage on Monolith rises accordingly.
@@ -122,9 +122,9 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 
 ## C. Polish / S8 candidates (cosmetic, batched for the hardening sprint)
 
-- **BL-018 · Flow-view edge label overlap** (S3-2): "on exception" labels can overlap node text at some zooms (seen next to Resume). Candidate fixes: label offset along edge path, or hide labels below a zoom threshold.
-- **BL-019 · SEC-004 message escaping** (Sprint-2 review): UNC paths display as `\\\\fs01\\…` because messages JSON-stringify the value; render raw path in UI/report contexts.
-- **BL-020 · Release-level view**: landing page could show release-wide aggregates (worst grade, total findings by severity, estate effort sum from migration reports) above the owner cards. Raised implicitly by the "download all" review (2026-07-21); pairs naturally with S6's program dashboard — check overlap before building.
+- ✅ **BL-018 (done 2026-07-22, backlog-quick-wins)** · Flow-view edge label overlap (S3-2): "on exception" labels can overlap node text at some zooms (seen next to Resume). Candidate fixes: label offset along edge path, or hide labels below a zoom threshold.
+- ✅ **BL-019 (done 2026-07-22, backlog-quick-wins)** · SEC-004 message escaping (Sprint-2 review): UNC paths display as `\\\\fs01\\…` because messages JSON-stringify the value; render raw path in UI/report contexts.
+- ✅ **BL-020 (done 2026-07-22, backlog-quick-wins)** · Release-level view: landing page could show release-wide aggregates (worst grade, total findings by severity, estate effort sum from migration reports) above the owner cards. Raised implicitly by the "download all" review (2026-07-21); pairs naturally with S6's program dashboard — check overlap before building.
 
 ---
 
