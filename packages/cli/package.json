@@ -1,0 +1,35 @@
+{
+  "name": "@prismshift/cli",
+  "version": "0.1.0",
+  "description": "PrismShift CLI: analyze Blue Prism exports in CI \u2014 parse, rules, summaries, optional conversion. No network, ever.",
+  "type": "module",
+  "bin": {
+    "prismshift": "./dist/cli.js"
+  },
+  "main": "./dist/cli.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "esbuild src/cli.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/cli.js --log-level=warning",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@prismshift/ir": "workspace:*",
+    "@prismshift/parser": "workspace:*",
+    "@prismshift/reports": "workspace:*",
+    "@prismshift/rules": "workspace:*",
+    "@prismshift/transformer": "workspace:*"
+  },
+  "devDependencies": {
+    "@prismshift/corpus": "workspace:*",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0",
+    "esbuild": "^0.24.0"
+  }
+}

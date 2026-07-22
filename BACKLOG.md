@@ -22,10 +22,11 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Expected behavior:** Supabase enterprise SSO wired in with **zero schema changes** (the §8.4 design promise). Role mapping from IdP groups → `admin/editor/viewer` documented.
 - **Acceptance:** Login via a test IdP (e.g. Okta dev) lands the user with correct RLS-scoped access; magic-link continues to work as fallback.
 
-### BL-003 · CLI (`prismshift analyze *.bprelease`)
+### BL-003 · CLI (`prismshift analyze *.bprelease`) — ✅ done (2026-07-22, backlog-cli)
 - **Origin:** Post-v1 list; the core packages were kept framework-free specifically to enable this. A precursor exists: `pnpm analyze <file>` (packages/rules/scripts/analyze.ts, added Sprint 2) — dev-only, tsx-run, not distributable.
 - **Expected behavior:** A published CLI (npm bin) that runs parse → rules → summaries → optional convert on one or many files, with `--json` output for CI gates (e.g. "fail the pipeline if any process grades below C"), exit codes reflecting findings severity thresholds, and no network calls ever.
 - **Acceptance:** Runs on Node 20+ from a packed tarball; JSON schema documented; corpus samples produce byte-identical output to the web app's analysis.
+- **Done (2026-07-22):** `packages/cli` (@prismshift/cli, bin `prismshift`): `analyze <files…> [--json] [--fail-below A-D] [--max-critical N] [--convert <dir>]`; exit codes 0/1/2/3 (pass/gate/parse/usage). The pure export assembly (`buildProcessExport`/`buildReleaseExport`) was lifted from apps/web into @prismshift/reports so CLI and web share one implementation (web keeps only ZIP+download). esbuild-bundled single-file dist (297 KB, deps inlined). **All acceptance criteria proven in tests**: byte-identical findings vs the web pipeline on all 4 corpus samples, deterministic JSON, gates + exit codes end-to-end, `--convert` writes the full per-process project folders, and a packed-tarball run (`pnpm pack` → extract → node dist/cli.js → exit 0). JSON schema (v1) documented in the package README with a GitHub Actions example.
 
 ### BL-004 · Automation Anywhere source adapter
 - **Origin:** Post-v1 list; IR was designed vendor-neutral for this.
