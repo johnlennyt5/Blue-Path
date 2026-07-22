@@ -32,10 +32,12 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Expected behavior:** A second parser package (`@prismshift/parser-aa`) emitting the same IR from AA exports. **No changes to rules/transformer/reports permitted** — that's the test of the IR abstraction. Corpus gains AA samples with answer keys in the existing schema.
 - **Acceptance:** An AA sample passes the full pipeline (findings, summaries, conversion) with only the new parser package added.
 
-### BL-005 · LLM-assisted code-stage translation
+### BL-005 · LLM-assisted code-stage translation — ✅ done (2026-07-22, backlog-code-translation)
 - **Origin:** Post-v1 list. Today, VB/C# code stages carry over verbatim into `ui:InvokeCode` flagged for review (S5-4); JScript is refused.
 - **Expected behavior:** Opt-in (same disclosure gating as the S7 AI layer): send the code body — code only, after the S7-1 redaction rules — to the LLM for idiomatic .NET translation, returned as a *suggestion* diff the user accepts per stage; never auto-applied. JScript → VB.NET proposals included.
 - **Acceptance:** Suggestion visible side-by-side with the original; accepting updates the emitted InvokeCode; declining keeps verbatim; everything logged in the migration report.
+- **Done (2026-07-22):** Privacy mechanism: `redactCodeLiterals` swaps string literals for `__LIT_n__` placeholders BEFORE the code leaves the browser, `restoreLiterals` re-inflates them in the returned suggestion — semantics preserved, values never travel; `assertLiteralsRedacted` runtime tripwire on every payload. llm-proxy gained `mode:'code'` (VB/C#/JScript → idiomatic VB.NET prompt that must reproduce placeholders exactly; audited as `ai.code_translation`; **rate limit now counts both AI event kinds**). Converter: `ConvertOptions.codeOverrides` (stage id → accepted code) threaded through convertProcess/convertObject — override emits into InvokeCode as VBNet + punch entry "translated by an AI suggestion the user accepted" (→ migration report); **an accepted VB.NET port unlocks previously-refused JScript stages**; no override = verbatim (regression-locked). UI: Conversion tab code rows get "✨ Suggest translation" (AI opt-in gated), side-by-side original vs suggestion, Accept ("use in export") / Decline ("keep verbatim") with status chips; accepted overrides flow through OwnerDetail downloads. E2E-proven with a real JScript→VB.NET translation through the proxy (ActiveXObject→CreateObject, placeholder preserved). 8 new tests.
+- **Residual:** overrides currently apply to the web per-process download path; CLI/release-bundle override passing is a small follow-up (shared assembly lives on the cli branch).
 
 ### BL-006 · Test-harness generation
 - **Origin:** Post-v1 list.
