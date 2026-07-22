@@ -417,3 +417,13 @@ enabled = true
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/invite-member/index.ts"
+
+[functions.llm-proxy]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/llm-proxy/index.ts"
+
+[functions.purge-workspace]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/purge-workspace/index.ts"

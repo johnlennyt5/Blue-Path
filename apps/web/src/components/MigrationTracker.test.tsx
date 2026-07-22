@@ -30,7 +30,7 @@ function seedTracker(role: WorkspaceRole) {
     init: () => {},
     available: true,
     session,
-    workspaces: [{ id: 'ws1', name: 'Estate', role, artifactStorageEnabled: false }],
+    workspaces: [{ id: 'ws1', name: 'Estate', role, artifactStorageEnabled: false, retentionDays: null }],
     activeWorkspaceId: 'ws1',
     members: [{ userId: 'me', email: 'me@test.local', role }],
     invites: [],

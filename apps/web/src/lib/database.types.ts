@@ -300,18 +300,21 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          retention_days: number | null
         }
         Insert: {
           artifact_storage_enabled?: boolean
           created_at?: string
           id?: string
           name: string
+          retention_days?: number | null
         }
         Update: {
           artifact_storage_enabled?: boolean
           created_at?: string
           id?: string
           name?: string
+          retention_days?: number | null
         }
         Relationships: []
       }

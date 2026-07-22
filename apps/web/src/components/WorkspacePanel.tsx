@@ -352,6 +352,48 @@ export function WorkspacePanel({ onClose }: { onClose: () => void }) {
                     : 'Admin-only setting.'}
                 </span>
               </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                <label className="flex items-center gap-2 text-slate-300">
+                  Audit retention
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="∞"
+                    aria-label="Audit retention days"
+                    disabled={!can.editWorkspaceSettings(role) || store.busy}
+                    value={
+                      store.workspaces.find((w) => w.id === store.activeWorkspaceId)
+                        ?.retentionDays ?? ''
+                    }
+                    onChange={(e) =>
+                      void store.updateRetention(
+                        e.target.value === '' ? null : Math.max(1, Number(e.target.value)),
+                      )
+                    }
+                    className="w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-600 disabled:opacity-50"
+                  />
+                  days
+                </label>
+                {can.editWorkspaceSettings(role) && (
+                  <button
+                    type="button"
+                    disabled={store.busy}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          'Purge this workspace? All synced programs, processes, findings and dependency edges are hard-deleted; audit events older than the retention window are pruned. This cannot be undone.',
+                        )
+                      ) {
+                        void store.purgeActiveWorkspace();
+                      }
+                    }}
+                    className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1.5 text-sm text-rose-300 hover:bg-rose-500/20 disabled:opacity-50"
+                  >
+                    Purge workspace data
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

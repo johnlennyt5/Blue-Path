@@ -12,6 +12,7 @@ export interface WorkspaceSummary {
   name: string;
   role: WorkspaceRole;
   artifactStorageEnabled: boolean;
+  retentionDays: number | null;
 }
 
 export interface WorkspaceMember {
@@ -90,7 +91,7 @@ export async function createWorkspace(sb: Supabase, name: string): Promise<strin
 /** Workspaces the signed-in user belongs to, with their own role attached. */
 export async function listWorkspaces(sb: Supabase, userId: string): Promise<WorkspaceSummary[]> {
   const workspaces = orThrow(
-    await sb.from('workspaces').select('id, name, artifact_storage_enabled'),
+    await sb.from('workspaces').select('id, name, artifact_storage_enabled, retention_days'),
   );
   const memberships = orThrow(
     await sb.from('workspace_members').select('workspace_id, role').eq('user_id', userId),
@@ -101,6 +102,7 @@ export async function listWorkspaces(sb: Supabase, userId: string): Promise<Work
     name: w.name,
     role: (roleByWorkspace.get(w.id) ?? 'viewer') as WorkspaceRole,
     artifactStorageEnabled: w.artifact_storage_enabled,
+    retentionDays: w.retention_days,
   }));
 }
 
@@ -201,6 +203,52 @@ export async function setArtifactStorage(
     detail: { enabled },
   });
   if (audit.error !== null) throw new Error(audit.error.message);
+}
+
+/** Admin-only (RLS): audit retention in days; null keeps everything. */
+export async function setRetentionDays(
+  sb: Supabase,
+  workspaceId: string,
+  days: number | null,
+): Promise<void> {
+  const { data, error } = await sb
+    .from('workspaces')
+    .update({ retention_days: days })
+    .eq('id', workspaceId)
+    .select('id');
+  if (error !== null) throw new Error(error.message);
+  if (data === null || data.length === 0) {
+    throw new Error('retention not changed — only workspace admins can do this');
+  }
+}
+
+/** Admin-only (checked server-side): hard-delete synced content + prune audit. */
+export async function purgeWorkspace(
+  sb: Supabase,
+  workspaceId: string,
+): Promise<{ programsDeleted: number; auditPruned: number }> {
+  const { data, error } = await sb.functions.invoke('purge-workspace', {
+    body: { workspace_id: workspaceId },
+  });
+  if (error !== null) {
+    const context = (error as { context?: Response }).context;
+    if (context !== undefined) {
+      const body = (await context.json().catch(() => null)) as { error?: string } | null;
+      throw new Error(body?.error ?? error.message);
+    }
+    throw new Error(error.message);
+  }
+  const result = data as {
+    ok?: boolean;
+    programs_deleted?: number;
+    audit_events_pruned?: number;
+    error?: string;
+  } | null;
+  if (result?.ok !== true) throw new Error(result?.error ?? 'purge failed');
+  return {
+    programsDeleted: result.programs_deleted ?? 0,
+    auditPruned: result.audit_events_pruned ?? 0,
+  };
 }
 
 export async function updateMemberRole(

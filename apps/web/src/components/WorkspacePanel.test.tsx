@@ -25,7 +25,7 @@ function seedStore(role: WorkspaceRole | 'signed-out' | 'unavailable') {
     workspaces:
       role === 'signed-out' || role === 'unavailable'
         ? []
-        : [{ id: 'ws1', name: 'Estate', role, artifactStorageEnabled: false }],
+        : [{ id: 'ws1', name: 'Estate', role, artifactStorageEnabled: false, retentionDays: null }],
     activeWorkspaceId: role === 'signed-out' || role === 'unavailable' ? null : 'ws1',
     members:
       role === 'signed-out' || role === 'unavailable'
@@ -98,6 +98,19 @@ describe('WorkspacePanel role gates', () => {
     const viewerToggle = screen.getByLabelText('Encrypted artifact storage');
     expect((viewerToggle as HTMLInputElement).disabled).toBe(true);
     expect(screen.getByText('Admin-only setting.')).toBeTruthy();
+  });
+
+  it('settings: purge button is admin-only; retention disabled for viewers', () => {
+    seedStore('admin');
+    render(<WorkspacePanel onClose={() => {}} />);
+    expect(screen.getByText('Purge workspace data')).toBeTruthy();
+    expect((screen.getByLabelText('Audit retention days') as HTMLInputElement).disabled).toBe(false);
+    cleanup();
+
+    seedStore('viewer');
+    render(<WorkspacePanel onClose={() => {}} />);
+    expect(screen.queryByText('Purge workspace data')).toBeNull();
+    expect((screen.getByLabelText('Audit retention days') as HTMLInputElement).disabled).toBe(true);
   });
 
   it('viewer: same read-only roster, viewer badge shown', () => {
