@@ -107,8 +107,13 @@ export interface ReleaseExport {
  * top-level folder (UiPath projects have exactly one entry process each —
  * a multi-process release cannot be a single project.json).
  */
-export function buildReleaseExport(model: AutomationModel): ReleaseExport {
-  const exports = model.processes.map((process) => buildProcessExport(model, process));
+export function buildReleaseExport(
+  model: AutomationModel,
+  codeOverrides: Record<string, string> = {},
+): ReleaseExport {
+  const exports = model.processes.map((process) =>
+    buildProcessExport(model, process, codeOverrides),
+  );
   const files = exports.flatMap((processExport) => {
     const folder = processExport.project.name.replace(/[^A-Za-z0-9_-]+/g, '_');
     return processExport.project.files.map((file) => ({
