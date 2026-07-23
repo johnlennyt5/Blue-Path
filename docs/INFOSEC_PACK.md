@@ -46,6 +46,7 @@ digest of names/types/structure through an audited, rate-limited server proxy.
 | Metadata sync | bp_name, source SHA-256, version, stage count, score, grade, status, effort estimate, finding summaries (rule id, severity, location *path*, message), dependency edges (names+types) | XML, XAML, expressions, data values, selectors | `assertMetadataOnly` runtime scan + tests proving the serialized corpus payload has zero content markers |
 | AI digest | component/page/stage/data-item **names**, types, exposure flags, stage kinds, `[references]` extracted from expressions, app element names+modes, queue/credential names | data-item values, expression text, selector attribute values, descriptions, XML | `assertNoValuesSurvive` runtime tripwire; fuzz property tests (40 planted values × 4 corpora, zero survivors); proxy-side raw-XML blocker (server-enforced, attempts audited) |
 | Auth | email, Supabase JWT | passwords (magic-link only) | Supabase Auth |
+| Encrypted artifacts (opt-in flag, BL-001) | AES-GCM-256 **ciphertext** + metadata (file name, sizes, IV, plaintext SHA-256) | plaintext of any kind; **the encryption key** (generated client-side, shared out-of-band, held only in members' browsers — key loss = artifact loss, by design) | client-side Web Crypto before upload; tests prove the uploaded payload carries no plaintext markers; RLS + storage path policies isolate per workspace; flag-off workspaces refuse inserts at the database |
 
 ## 4. Tenant isolation
 

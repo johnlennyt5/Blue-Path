@@ -71,7 +71,7 @@ describe('process export delivery modes', () => {
   it('library: no copies, dependency entry, per-object punch instructions', async () => {
     const model = await sample2();
     const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
-    const { project, conversion } = buildProcessExport(model, performer, 'library');
+    const { project, conversion } = buildProcessExport(model, performer, {}, 'library');
 
     expect(project.files.some((f) => f.path.startsWith('Objects/'))).toBe(false);
     const projectJson = JSON.parse(
@@ -88,7 +88,7 @@ describe('process export delivery modes', () => {
 describe('release export delivery modes', () => {
   it('library mode bundles Libraries/<Object>/ once, shared by all consumers', async () => {
     const model = await sample2();
-    const release = buildReleaseExport(model, { objects: 'library' });
+    const release = buildReleaseExport(model, {}, { objects: 'library' });
     const paths = release.files.map((f) => f.path);
 
     expect(paths).toContain('Libraries/Invoice_Entry_VBO/project.json');

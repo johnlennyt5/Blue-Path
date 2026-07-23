@@ -6,6 +6,7 @@ import { buildObjectLibraryExport } from '@prismshift/reports';
 import { buildProcessExport, downloadBlob, projectZipBlob } from '../lib/exportProject';
 import { GRADE_COLORS } from '../lib/findingView';
 import { sanitizeFileName } from '@prismshift/transformer';
+import { acceptedCodeOverrides, useAiStore } from '../store/ai';
 import { useSession } from '../store/session';
 import type { DetailTab } from '../store/session';
 import { ConversionPanel } from './ConversionPanel';
@@ -35,6 +36,7 @@ export function OwnerDetail({
   const setTab = useSession((s) => s.setTab);
   const selectOwner = useSession((s) => s.selectOwner);
   const [exportNote, setExportNote] = useState<string | null>(null);
+  const codeSuggestions = useAiStore((s) => s.codeSuggestions);
 
   if (!selection) return null;
   const process = model.processes.find((p) => p.id === selection.ownerId);
@@ -72,7 +74,7 @@ export function OwnerDetail({
           <button
             type="button"
             onClick={() => {
-              const { project, conversion } = buildProcessExport(model, process);
+              const { project, conversion } = buildProcessExport(model, process, acceptedCodeOverrides(codeSuggestions));
               void projectZipBlob(project).then((blob) => {
                 downloadBlob(blob, `${sanitizeFileName(process.name)}-UiPath.zip`);
                 setExportNote(
@@ -97,7 +99,11 @@ export function OwnerDetail({
             <button
               type="button"
               onClick={() => {
-                const library = buildObjectLibraryExport(model, owner as BusinessObjectNode);
+                const library = buildObjectLibraryExport(
+                  model,
+                  owner as BusinessObjectNode,
+                  acceptedCodeOverrides(codeSuggestions),
+                );
                 void projectZipBlob(library.project).then((blob) => {
                   downloadBlob(blob, `${library.project.name.replace(/[^A-Za-z0-9_-]+/g, '_')}-library.zip`);
                   setExportNote(
