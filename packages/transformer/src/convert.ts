@@ -248,6 +248,12 @@ interface ConvertContext {
   objectRoutes: Map<string, { file: string; signature: PageSignature }>;
   /** True when this page retrieves its own TransactionItem. */
   pageHasGetTransaction: boolean;
+  /**
+   * BL-012: collections filled by Get Next Item on this page
+   * (collection name → field name → BP type). Field reads rewrite to
+   * TransactionItem.SpecificContent instead of DataTable access.
+   */
+  queueItemCollections: Map<string, Map<string, string>>;
   /** True while emitting the recovery chain (Rethrow is only legal there). */
   inRecovery: boolean;
   /** Variables added during conversion (e.g. TransactionItem). */
@@ -300,15 +306,35 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
     for (const output of stage.outputs) {
       const target = identifierFor(ctx, output.storeIn) ?? sanitizeIdentifier(output.storeIn);
       if (typeFor(ctx, target) === 'DataTable') {
-        activities.push({
-          kind: 'comment',
-          text: `PrismShift: BP output "${output.paramName}" carried the queue item data — read fields from ${TRANSACTION_ITEM}.SpecificContent("<field>") instead of ${target}.`,
-        });
-        issue(
-          ctx,
-          stage,
-          `Queue item data output "${output.paramName}" needs manual mapping from ${TRANSACTION_ITEM}.SpecificContent`,
-        );
+        // BL-012: when the collection's fields are known, downstream
+        // [Coll.Field] reads rewrite to typed SpecificContent access — the
+        // DataTable is skipped entirely, so it is never left unset.
+        const collectionItem = ctx.itemsByName.get(output.storeIn);
+        if (collectionItem?.fields?.length) {
+          ctx.queueItemCollections.set(
+            output.storeIn,
+            new Map(collectionItem.fields.map((field) => [field.name, field.type])),
+          );
+          activities.push({
+            kind: 'comment',
+            text: `PrismShift: BP output "${output.paramName}" carries the queue item data — [${output.storeIn}.<field>] reads below use ${TRANSACTION_ITEM}.SpecificContent("<field>") directly; ${target} stays unused.`,
+          });
+          issue(
+            ctx,
+            stage,
+            `Queue item data reads rewritten to ${TRANSACTION_ITEM}.SpecificContent — verify field names match the queue schema`,
+          );
+        } else {
+          activities.push({
+            kind: 'comment',
+            text: `PrismShift: BP output "${output.paramName}" carried the queue item data — read fields from ${TRANSACTION_ITEM}.SpecificContent("<field>") instead of ${target}.`,
+          });
+          issue(
+            ctx,
+            stage,
+            `Queue item data output "${output.paramName}" needs manual mapping from ${TRANSACTION_ITEM}.SpecificContent (collection definition has no fields)`,
+          );
+        }
       } else {
         activities.push({
           kind: 'assign',
@@ -432,6 +458,9 @@ function translate(ctx: ConvertContext, stage: Stage, raw: string): string {
   const { vb, issues } = translateBpExpression(raw, {
     resolveRef: (name) => identifierFor(ctx, name),
     ...(loop ? { loop } : {}),
+    ...(ctx.queueItemCollections.size > 0
+      ? { queueCollections: ctx.queueItemCollections }
+      : {}),
   });
   for (const reason of issues) issue(ctx, stage, reason);
   return vb;
@@ -1018,6 +1047,7 @@ function convertPage(
     signature,
     signaturesByPageName,
     loopStack: [],
+    queueItemCollections: new Map(),
     itemsByName: new Map(owner.dataItems.map((d) => [d.name, d])),
     selectors,
     objectRoutes,

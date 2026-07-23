@@ -70,6 +70,24 @@ describe('S5-2 · performer queue conversion', () => {
     expect(conversion.convertedStageCount).toBe(conversion.totalStageCount);
     expect(conversion.coveragePct).toBe(100);
   });
+
+  it('BL-012: queue item data is a rewrite note, never a manual-mapping gap', async () => {
+    const model = await sample2();
+    const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const conversion = convertProcess(model, performer);
+    const reasons = conversion.punchList.map((i) => i.reason);
+
+    // The old gap — "needs manual mapping" with the variable left unset — is gone…
+    expect(reasons.some((r) => r.includes('needs manual mapping'))).toBe(false);
+    // …replaced by the review note that field reads use SpecificContent.
+    expect(
+      reasons.some((r) => r.includes('rewritten to TransactionItem.SpecificContent')),
+    ).toBe(true);
+
+    // The Main Page comment tells the reviewer the DataTable is bypassed.
+    const mainXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
+    expect(mainXaml).toContain('stays unused');
+  });
 });
 
 describe('S5-2 · manifests', () => {

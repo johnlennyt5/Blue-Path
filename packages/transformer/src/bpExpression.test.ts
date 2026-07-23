@@ -321,6 +321,61 @@ describe('collection field access in loop context', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// BL-012 — queue-item collections rewrite to SpecificContent
+// ---------------------------------------------------------------------------
+
+describe('BL-012 · queue-item SpecificContent rewrites', () => {
+  const queueCollections = new Map([
+    [
+      'Item Data',
+      new Map([
+        ['Invoice Ref', 'text'],
+        ['Amount', 'number'],
+        ['Due Date', 'date'],
+        ['Urgent', 'flag'],
+      ]),
+    ],
+  ]);
+
+  it('text fields read via CStr(SpecificContent)', () => {
+    const result = translateBpExpression('[Item Data.Invoice Ref]', { queueCollections });
+    expect(result.vb).toBe('CStr(TransactionItem.SpecificContent("Invoice Ref"))');
+    expect(result.issues[0]).toContain('verify the field name matches the queue schema');
+  });
+
+  it('number/date/flag fields get the matching coercion', () => {
+    expect(translateBpExpression('[Item Data.Amount] * 2', { queueCollections }).vb).toBe(
+      'CDbl(TransactionItem.SpecificContent("Amount")) * 2',
+    );
+    expect(translateBpExpression('[Item Data.Due Date]', { queueCollections }).vb).toBe(
+      'CDate(TransactionItem.SpecificContent("Due Date"))',
+    );
+    expect(translateBpExpression('[Item Data.Urgent]', { queueCollections }).vb).toBe(
+      'CBool(TransactionItem.SpecificContent("Urgent"))',
+    );
+  });
+
+  it('fields missing from the collection definition still emit but flag louder', () => {
+    const result = translateBpExpression('[Item Data.Ghost]', { queueCollections });
+    expect(result.vb).toBe('CStr(TransactionItem.SpecificContent("Ghost"))');
+    expect(result.issues[0]).toContain('not in the collection definition');
+  });
+
+  it('queue mapping wins over an active loop on the same collection', () => {
+    const result = translateBpExpression('[Item Data.Amount]', {
+      queueCollections,
+      loop: { collectionName: 'Item Data', rowVar: 'CurrentRow' },
+    });
+    expect(result.vb).toBe('CDbl(TransactionItem.SpecificContent("Amount"))');
+  });
+
+  it('non-queue collections keep their existing behavior', () => {
+    const result = translateBpExpression('[Other.Name]', { resolveRef: resolve, queueCollections });
+    expect(result.vb).toBe('Other.Rows(0)("Name")');
+  });
+});
+
 describe('determinism', () => {
   it('same input, same output, always', () => {
     for (const [bp] of CLEAN.slice(0, 20)) {
