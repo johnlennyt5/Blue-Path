@@ -255,8 +255,24 @@ function reframeworkFiles(queueName?: string, configEntries: ConfigEntry[] = [])
   ];
 }
 
-function reframeworkMain(processFile: string, queueName?: string): WorkflowDoc {
+function reframeworkMain(
+  processFile: string,
+  queueName?: string,
+  processArguments: WorkflowDoc['arguments'] = [],
+): WorkflowDoc {
   const itemType = queueName !== undefined ? ('QueueItem' as const) : ('Object' as const);
+  // BL-014: an absorbed polling loop leaves the Process workflow expecting the
+  // queue item as io_TransactionItem — bind the loop's own item through.
+  const processBindings = processArguments.some((arg) => arg.name === 'io_TransactionItem')
+    ? [
+        {
+          name: 'io_TransactionItem',
+          direction: 'inout' as const,
+          type: itemType,
+          expression: 'TransactionItem',
+        },
+      ]
+    : [];
   const transactionLoop: XActivity = {
     kind: 'tryCatch',
     displayName: 'Transaction Guard',
@@ -277,7 +293,7 @@ function reframeworkMain(processFile: string, queueName?: string): WorkflowDoc {
           kind: 'invokeWorkflow',
           displayName: 'Process',
           workflowFile: processFile.replaceAll('/', '\\'),
-          arguments: [],
+          arguments: processBindings,
         },
         {
           kind: 'invokeWorkflow',
@@ -393,7 +409,9 @@ export function buildProject(options: BuildProjectOptions): UiPathProject {
   });
   files.push({
     path: 'Main.xaml',
-    content: emitWorkflowXaml(reframeworkMain(processEntry, options.queueName)),
+    content: emitWorkflowXaml(
+      reframeworkMain(processEntry, options.queueName, options.workflows[0]?.doc.arguments ?? []),
+    ),
   });
   for (const scaffold of reframeworkFiles(options.queueName, options.configEntries ?? [])) {
     files.push({ path: scaffold.path, content: emitWorkflowXaml(scaffold.doc) });

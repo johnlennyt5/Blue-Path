@@ -33,23 +33,20 @@ describe('S5-2 · dispatcher queue conversion', () => {
 });
 
 describe('S5-2 · performer queue conversion', () => {
-  it('Get Next Item → GetQueueItem + Reference assign; Mark Completed → Successful', async () => {
+  it('BL-014: polling machinery is absorbed — the main page is one transaction of work', async () => {
     const model = await sample2();
     const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
     const conversion = convertProcess(model, performer);
-    const mainXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
+    const processXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
 
-    expect(mainXaml).toContain(
-      '<ui:GetQueueItem DisplayName="Get Next Item" QueueType="[&quot;Invoices Queue&quot;]"',
-    );
-    expect(mainXaml).toContain('TransactionItem="[TransactionItem]"');
-    expect(mainXaml).toContain(
-      '[If(TransactionItem Is Nothing, String.Empty, TransactionItem.Reference)]',
-    );
-    expect(mainXaml).toContain(
-      '<ui:SetTransactionStatus DisplayName="Mark Completed" Status="Successful" TransactionItem="[TransactionItem]" />',
-    );
-    expect(mainXaml).toContain('<Variable x:TypeArguments="ui:QueueItem" Name="TransactionItem" />');
+    // The framework loop owns Get Next + status writes now (see
+    // Framework\GetTransactionData / SetTransactionStatus in the scaffold).
+    expect(conversion.workflows[0]!.path).toBe('Process.xaml');
+    expect(processXaml).not.toContain('<ui:GetQueueItem');
+    expect(processXaml).not.toContain('<ui:SetTransactionStatus');
+    expect(processXaml).toContain('BL-014');
+    // The work chain survives: one transaction = invoke Process Item.
+    expect(processXaml).toContain('Pages\\Process_Item.xaml');
   });
 
   it('Mark Exception → Failed with reason; TransactionItem arrives as io_ argument', async () => {
@@ -92,10 +89,47 @@ describe('S5-2 · performer queue conversion', () => {
     // No stray local variable shadowing the argument
     expect(pageXaml).not.toContain('<Variable x:TypeArguments="ui:QueueItem"');
 
-    // Caller passes its local TransactionItem through the InOut binding
+    // The absorbed main page passes its own io_TransactionItem through
     expect(mainXaml).toContain(
-      '<InOutArgument x:TypeArguments="ui:QueueItem" x:Key="io_TransactionItem">[TransactionItem]</InOutArgument>',
+      '<InOutArgument x:TypeArguments="ui:QueueItem" x:Key="io_TransactionItem">[io_TransactionItem]</InOutArgument>',
     );
+  });
+
+  it('BL-014: scaffold Main survives, invokes Process.xaml, and binds the item; deviant cycles stay manual', async () => {
+    const model = await sample2();
+    const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const conversion = convertProcess(model, performer);
+
+    const reasons = conversion.punchList.map((i) => i.reason);
+    expect(reasons.some((r) => r.includes('cycle needs manual restructuring'))).toBe(false);
+    expect(
+      reasons.some((r) => r.includes('absorbed into the REFramework transaction loop')),
+    ).toBe(true);
+    expect(conversion.coveragePct).toBe(100);
+
+    const project = buildProject({
+      name: performer.name,
+      layout: 'reframework',
+      queueName: 'Invoices Queue',
+      workflows: conversion.workflows,
+    });
+    // No Main.xaml collision anymore: scaffold Main + converted Process coexist.
+    expect(project.files.filter((f) => f.path === 'Main.xaml')).toHaveLength(1);
+    expect(project.files.some((f) => f.path === 'Process.xaml')).toBe(true);
+    const scaffoldMain = project.files.find((f) => f.path === 'Main.xaml')!;
+    expect(scaffoldMain.content).toContain('Process.xaml');
+    expect(scaffoldMain.content).toContain(
+      'x:Key="io_TransactionItem">[TransactionItem]</InOutArgument>',
+    );
+
+    // Deviant shape: the Monolith's retry cycle is NOT a polling loop — it
+    // keeps the honest manual flag.
+    const { xml } = await loadSample('03-the-monolith');
+    const { model: monolith } = await parseBpRelease(xml);
+    const reconciliation = monolith.processes[0]!;
+    const monolithConversion = convertProcess(monolith, reconciliation);
+    const monolithReasons = monolithConversion.punchList.map((i) => i.reason);
+    expect(monolithReasons.some((r) => r.includes('cycle needs manual restructuring'))).toBe(true);
   });
 
   it('BL-012: queue item data is a rewrite note, never a manual-mapping gap', async () => {

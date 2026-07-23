@@ -207,6 +207,121 @@ function buildMaps(page: Page): PageMaps {
   return { byId, order, nextFlow, decisionTargets, choiceTargets, allTargets };
 }
 
+// ---------------------------------------------------------------------------
+// BL-014: polling-loop shape detection
+// ---------------------------------------------------------------------------
+
+/**
+ * The exact restructurable shape: one Get Next Item → guard decision → work →
+ * one Mark Completed/Exception → (anchors) → back to Get Next, with the other
+ * decision branch exiting. Anything deviating stays a manual-cycle flag.
+ */
+export interface PollingLoop {
+  getNextId: string;
+  decisionId: string;
+  /** Head of the work chain (the loop-side branch target). */
+  workHeadId: string;
+  /** The status write that closes each transaction (absorbed by framework). */
+  markId: string;
+  /** Anchor stages on the back-edge path (absorbed). */
+  absorbedAnchorIds: string[];
+}
+
+function isQueueActionStage(s: Stage): s is ActionStage {
+  return s.kind === 'action' && (s.queueName !== undefined || s.objectName === 'Work Queues');
+}
+const isGetNextStage = (s: Stage): boolean =>
+  isQueueActionStage(s) && /get next/.test(s.actionName.toLowerCase());
+const isMarkStatusStage = (s: Stage): boolean =>
+  isQueueActionStage(s) &&
+  /mark completed|complete|mark exception|exception/.test(s.actionName.toLowerCase());
+
+/** Can `fromId` reach `targetId` following any edges? */
+function reaches(maps: PageMaps, fromId: string, targetId: string): boolean {
+  const seen = new Set<string>();
+  const queue = [fromId];
+  while (queue.length > 0) {
+    const id = queue.pop()!;
+    if (id === targetId) return true;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    queue.push(...(maps.allTargets.get(id) ?? []));
+  }
+  return false;
+}
+
+/**
+ * Walk the loop side: single-successor stages only, ≥1 work stage, exactly one
+ * status write, then only anchors until landing back on the Get Next stage.
+ */
+function walkLoopSide(
+  maps: PageMaps,
+  headId: string,
+  getNextId: string,
+): { markId: string; anchors: string[] } | undefined {
+  let current: string | undefined = headId;
+  let markId: string | undefined;
+  let sawWork = false;
+  const anchors: string[] = [];
+  const visited = new Set<string>();
+
+  while (current !== undefined) {
+    if (current === getNextId) {
+      return markId !== undefined && sawWork ? { markId, anchors } : undefined;
+    }
+    if (visited.has(current)) return undefined;
+    visited.add(current);
+    const stage = maps.byId.get(current);
+    if (stage === undefined) return undefined;
+    // Branching or an exit inside the loop body → not the mechanical shape.
+    if (stage.kind === 'decision' || stage.kind === 'choice' || stage.kind === 'end') {
+      return undefined;
+    }
+    if (isMarkStatusStage(stage)) {
+      if (markId !== undefined) return undefined; // two status writes → deviant
+      markId = stage.id;
+    } else if (stage.kind === 'anchor') {
+      if (markId !== undefined) anchors.push(stage.id);
+    } else {
+      if (markId !== undefined) return undefined; // work after the status write → deviant
+      sawWork = true;
+    }
+    current = maps.nextFlow.get(current);
+  }
+  return undefined;
+}
+
+export function detectPollingLoop(page: Page): PollingLoop | undefined {
+  const maps = buildMaps(page);
+  const getNexts = page.stages.filter(isGetNextStage);
+  if (getNexts.length !== 1) return undefined;
+  const getNext = getNexts[0]!;
+
+  const decisionId = maps.nextFlow.get(getNext.id);
+  const decision = decisionId !== undefined ? maps.byId.get(decisionId) : undefined;
+  if (decision === undefined || decision.kind !== 'decision') return undefined;
+  const targets = maps.decisionTargets.get(decision.id);
+  if (targets?.onTrue === undefined || targets.onFalse === undefined) return undefined;
+
+  const candidates: [string, string][] = [
+    [targets.onTrue, targets.onFalse],
+    [targets.onFalse, targets.onTrue],
+  ];
+  for (const [loopHead, exitHead] of candidates) {
+    const walk = walkLoopSide(maps, loopHead, getNext.id);
+    if (walk === undefined) continue;
+    if (reaches(maps, exitHead, getNext.id)) return undefined; // both sides loop
+    return {
+      getNextId: getNext.id,
+      decisionId: decision.id,
+      workHeadId: loopHead,
+      markId: walk.markId,
+      absorbedAnchorIds: walk.anchors,
+    };
+  }
+  return undefined;
+}
+
 /** Earliest (document-order) stage reachable from ALL branch heads — the join. */
 function findJoin(maps: PageMaps, heads: (string | undefined)[]): string | undefined {
   const reachableSets = heads.map((head) => {
@@ -262,6 +377,11 @@ interface ConvertContext {
   transactionItemVar: string;
   /** BL-013: true when this page receives the item via io_TransactionItem. */
   receivesTransactionItem: boolean;
+  /**
+   * BL-014: plain `[Name]` refs resolving to queue-item expressions (e.g. an
+   * absorbed Get Next "Item ID" output → `io_TransactionItem.Reference`).
+   */
+  queueReferenceAliases: Map<string, string>;
   /** True while emitting the recovery chain (Rethrow is only legal there). */
   inRecovery: boolean;
   /** Variables added during conversion (e.g. TransactionItem). */
@@ -477,7 +597,7 @@ function typeFor(ctx: ConvertContext, identifier: string): XamlType {
 function translate(ctx: ConvertContext, stage: Stage, raw: string): string {
   const loop = ctx.loopStack[ctx.loopStack.length - 1];
   const { vb, issues } = translateBpExpression(raw, {
-    resolveRef: (name) => identifierFor(ctx, name),
+    resolveRef: (name) => ctx.queueReferenceAliases.get(name) ?? identifierFor(ctx, name),
     ...(loop ? { loop } : {}),
     ...(ctx.queueItemCollections.size > 0
       ? { queueCollections: ctx.queueItemCollections, transactionItemVar: ctx.transactionItemVar }
@@ -1066,6 +1186,8 @@ interface CrossPageQueueContext {
   receivesTransactionItem: boolean;
   /** Callee param name → queue collection fields fed in by a caller. */
   queueParams: Map<string, Map<string, string>>;
+  /** BL-014: detected polling loop to absorb into the REFramework loop. */
+  pollingLoop?: PollingLoop;
 }
 
 function convertPage(
@@ -1091,6 +1213,7 @@ function convertPage(
     queueItemCollections: new Map(),
     transactionItemVar: crossPage.receivesTransactionItem ? TRANSACTION_ITEM_ARG : TRANSACTION_ITEM,
     receivesTransactionItem: crossPage.receivesTransactionItem,
+    queueReferenceAliases: new Map(),
     itemsByName: new Map(owner.dataItems.map((d) => [d.name, d])),
     selectors,
     objectRoutes,
@@ -1120,11 +1243,66 @@ function convertPage(
   const startStage = page.stages.find((s) => s.kind === 'start');
   if (startStage) converted.add(startStage.id);
 
-  const mainChain = emitChain(
-    ctx,
-    startStage ? maps.nextFlow.get(startStage.id) : undefined,
-    undefined,
-  );
+  let mainChain: XActivity[];
+  const polling = crossPage.pollingLoop;
+  if (polling !== undefined) {
+    // BL-014: the framework's transaction loop replaces the BP polling shape.
+    // Get Next → Framework\GetTransactionData; the guard decision and the
+    // status write are the loop machinery; only the work chain is emitted.
+    const getNext = maps.byId.get(polling.getNextId);
+    const mark = maps.byId.get(polling.markId);
+    if (getNext?.kind === 'action') {
+      ctx.pageHasGetTransaction = false; // the item now arrives as io_TransactionItem
+      for (const output of getNext.outputs) {
+        const item = ctx.itemsByName.get(output.storeIn);
+        if (item?.dataType === 'collection' && item.fields?.length) {
+          // BL-012 registration survives absorption — reads stay rewritten.
+          ctx.queueItemCollections.set(
+            output.storeIn,
+            new Map(item.fields.map((field) => [field.name, field.type])),
+          );
+        } else {
+          // Text outputs (the BP "Item ID") resolve to the item's Reference.
+          ctx.queueReferenceAliases.set(
+            output.storeIn,
+            `${ctx.transactionItemVar}.Reference`,
+          );
+        }
+      }
+    }
+    for (const id of [
+      polling.getNextId,
+      polling.decisionId,
+      polling.markId,
+      ...polling.absorbedAnchorIds,
+    ]) {
+      converted.add(id);
+    }
+    // The exit branch (queue empty) becomes the framework's own termination.
+    for (const stage of page.stages) {
+      if (stage.kind === 'end') converted.add(stage.id);
+    }
+    mainChain = [
+      {
+        kind: 'comment',
+        text: `PrismShift (BL-014): the BP polling loop is absorbed by the REFramework transaction loop — "${getNext?.name ?? 'Get Next Item'}" → Framework\\GetTransactionData, "${mark?.name ?? 'Mark Status'}" → Framework\\SetTransactionStatus. This workflow is one transaction's work; the queue item arrives as ${TRANSACTION_ITEM_ARG}.`,
+      },
+      ...emitChain(ctx, polling.workHeadId, polling.markId),
+    ];
+    if (mark !== undefined) {
+      issue(
+        ctx,
+        mark,
+        'Polling loop absorbed into the REFramework transaction loop — verify status semantics in Framework\\SetTransactionStatus match the BP loop',
+      );
+    }
+  } else {
+    mainChain = emitChain(
+      ctx,
+      startStage ? maps.nextFlow.get(startStage.id) : undefined,
+      undefined,
+    );
+  }
 
   const recoverStage = page.stages.find((s) => s.kind === 'recover');
   let recoveryChain: XActivity[] = [];
@@ -1207,15 +1385,17 @@ export function convertProcess(
   const signatures = process.pages.map((page) => buildPageSignature(process, page));
   const signaturesByPageName = new Map(process.pages.map((page, i) => [page.name, signatures[i]!]));
 
+  // BL-014 pre-pass: pages whose polling loop the framework loop absorbs
+  const pollingByPage = new Map<string, PollingLoop>();
+  for (const page of process.pages) {
+    const loop = detectPollingLoop(page);
+    if (loop !== undefined) pollingByPage.set(page.name, loop);
+  }
+
   // BL-013 pre-pass: which pages must receive the TransactionItem?
-  const isQueueStage = (s: Stage): s is ActionStage =>
-    s.kind === 'action' && (s.queueName !== undefined || s.objectName === 'Work Queues');
-  const pageHasGetNext = (page: Page): boolean =>
-    page.stages.some((s) => isQueueStage(s) && /get next/.test(s.actionName.toLowerCase()));
-  const usesItemStatus = (page: Page): boolean =>
-    page.stages.some(
-      (s) => isQueueStage(s) && /mark completed|complete|mark exception|exception/.test(s.actionName.toLowerCase()),
-    );
+  const isQueueStage = isQueueActionStage;
+  const pageHasGetNext = (page: Page): boolean => page.stages.some(isGetNextStage);
+  const usesItemStatus = (page: Page): boolean => page.stages.some(isMarkStatusStage);
 
   // a) queue collections produced per page (Get Next outputs with field defs)
   const queueCollectionsByPage = new Map<string, Map<string, Map<string, string>>>();
@@ -1258,6 +1438,11 @@ export function convertProcess(
   //    receivers without their own Get Next, plus (fixpoint) their callers.
   const needsItem = new Set<string>();
   for (const page of process.pages) {
+    // BL-014: absorbed pages lose their Get Next — the framework passes the item in.
+    if (pollingByPage.has(page.name)) {
+      needsItem.add(page.name);
+      continue;
+    }
     if (pageHasGetNext(page)) continue;
     if (usesItemStatus(page) || queueParamsByPage.has(page.name)) needsItem.add(page.name);
   }
@@ -1284,8 +1469,17 @@ export function convertProcess(
   // Pass 2: convert pages
   for (const [index, page] of process.pages.entries()) {
     const isMain = index === 0;
-    const className = isMain ? 'Main' : sanitizeFileName(page.name);
-    const path = isMain ? 'Main.xaml' : `Pages/${sanitizeFileName(page.name)}.xaml`;
+    const polling = pollingByPage.get(page.name);
+    // BL-014: an absorbed main page becomes the REFramework Process workflow —
+    // the scaffold Main.xaml owns the loop, so the page can't be Main.xaml.
+    const className =
+      isMain && polling !== undefined ? 'Process' : isMain ? 'Main' : sanitizeFileName(page.name);
+    const path =
+      isMain && polling !== undefined
+        ? 'Process.xaml'
+        : isMain
+          ? 'Main.xaml'
+          : `Pages/${sanitizeFileName(page.name)}.xaml`;
     const result = convertPage(
       process,
       page,
@@ -1299,6 +1493,7 @@ export function convertProcess(
       {
         receivesTransactionItem: needsItem.has(page.name),
         queueParams: queueParamsByPage.get(page.name) ?? new Map(),
+        ...(polling !== undefined ? { pollingLoop: polling } : {}),
       },
     );
     for (const id of result.converted) convertedIds.add(id);
