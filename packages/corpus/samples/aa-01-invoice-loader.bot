@@ -1,0 +1,143 @@
+{
+  "name": "Invoice Loader",
+  "description": "Nightly A360 bot: reads staged invoice rows and posts each to the ERP, routing high-value invoices to a separate approval task.",
+  "botVersion": "1.0.0",
+  "variables": [
+    {
+      "name": "SourcePath",
+      "type": "STRING",
+      "input": false,
+      "output": false,
+      "defaultValue": { "type": "STRING", "string": "\\\\fs01\\aa\\invoices.csv" }
+    },
+    {
+      "name": "ApiPassword",
+      "type": "STRING",
+      "input": true,
+      "output": false,
+      "description": "ERP API password, supplied at run time",
+      "defaultValue": { "type": "STRING", "string": "" }
+    },
+    {
+      "name": "InvoiceTable",
+      "type": "TABLE",
+      "input": false,
+      "output": false
+    },
+    {
+      "name": "RowCount",
+      "type": "NUMBER",
+      "input": false,
+      "output": true,
+      "defaultValue": { "type": "NUMBER", "number": 0 }
+    }
+  ],
+  "nodes": [
+    {
+      "uid": "n-comment",
+      "command": "comment",
+      "packageName": "comment",
+      "attributes": [
+        { "name": "comment", "value": { "type": "STRING", "string": "Runs nightly at 02:00 via the AA scheduler." } }
+      ]
+    },
+    {
+      "uid": "n-log-start",
+      "command": "logToFile",
+      "packageName": "log",
+      "attributes": [
+        { "name": "displayName", "value": { "type": "STRING", "string": "Log Run Start" } },
+        { "name": "message", "value": { "type": "EXPRESSION", "expression": "Starting invoice load from $SourcePath$" } }
+      ]
+    },
+    {
+      "uid": "n-reset-count",
+      "command": "assign",
+      "packageName": "variables",
+      "attributes": [
+        { "name": "displayName", "value": { "type": "STRING", "string": "Reset Row Count" } },
+        { "name": "destination", "value": { "type": "VARIABLE", "string": "RowCount" } },
+        { "name": "expression", "value": { "type": "EXPRESSION", "expression": "0" } }
+      ]
+    },
+    {
+      "uid": "n-loop-rows",
+      "command": "loop",
+      "packageName": "loop",
+      "attributes": [
+        { "name": "displayName", "value": { "type": "STRING", "string": "For Each Invoice Row" } },
+        { "name": "iterator", "value": { "type": "EXPRESSION", "expression": "$InvoiceTable$" } }
+      ],
+      "children": [
+        {
+          "uid": "n-if-high-value",
+          "command": "if",
+          "packageName": "conditional",
+          "attributes": [
+            { "name": "displayName", "value": { "type": "STRING", "string": "High Value?" } },
+            { "name": "condition", "value": { "type": "EXPRESSION", "expression": "$InvoiceTable.Amount$ > 1000" } }
+          ],
+          "children": [
+            {
+              "uid": "n-post-high",
+              "command": "runTask",
+              "packageName": "taskbot",
+              "attributes": [
+                { "name": "displayName", "value": { "type": "STRING", "string": "Post High-Value Invoice" } },
+                { "name": "taskPath", "value": { "type": "STRING", "string": "Bots\\Post Invoice Approval" } },
+                { "name": "input:Amount", "value": { "type": "EXPRESSION", "expression": "$InvoiceTable.Amount$" } },
+                { "name": "input:ApiPassword", "value": { "type": "EXPRESSION", "expression": "$ApiPassword$" } }
+              ]
+            }
+          ]
+        },
+        {
+          "uid": "n-else-normal",
+          "command": "else",
+          "packageName": "conditional",
+          "children": [
+            {
+              "uid": "n-post-normal",
+              "command": "runTask",
+              "packageName": "taskbot",
+              "attributes": [
+                { "name": "displayName", "value": { "type": "STRING", "string": "Post Invoice" } },
+                { "name": "taskPath", "value": { "type": "STRING", "string": "Bots\\Post Invoice" } },
+                { "name": "input:Amount", "value": { "type": "EXPRESSION", "expression": "$InvoiceTable.Amount$" } },
+                { "name": "input:ApiPassword", "value": { "type": "EXPRESSION", "expression": "$ApiPassword$" } }
+              ]
+            }
+          ]
+        },
+        {
+          "uid": "n-count-row",
+          "command": "assign",
+          "packageName": "variables",
+          "attributes": [
+            { "name": "displayName", "value": { "type": "STRING", "string": "Count Row" } },
+            { "name": "destination", "value": { "type": "VARIABLE", "string": "RowCount" } },
+            { "name": "expression", "value": { "type": "EXPRESSION", "expression": "$RowCount$ + 1" } }
+          ]
+        }
+      ]
+    },
+    {
+      "uid": "n-legacy-terminal",
+      "command": "terminalEmulatorConnect",
+      "packageName": "terminal",
+      "attributes": [
+        { "name": "displayName", "value": { "type": "STRING", "string": "Update Mainframe Ledger" } },
+        { "name": "host", "value": { "type": "STRING", "string": "mf01.internal" } }
+      ]
+    },
+    {
+      "uid": "n-log-done",
+      "command": "logToFile",
+      "packageName": "log",
+      "attributes": [
+        { "name": "displayName", "value": { "type": "STRING", "string": "Log Run Complete" } },
+        { "name": "message", "value": { "type": "EXPRESSION", "expression": "Loaded $RowCount$ invoices" } }
+      ]
+    }
+  ]
+}
