@@ -34,6 +34,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      artifacts: {
+        Row: {
+          id: string
+          iv: string
+          kind: string
+          name: string
+          plaintext_sha256: string
+          size_bytes: number
+          uploaded_at: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Insert: {
+          id?: string
+          iv: string
+          kind: string
+          name: string
+          plaintext_sha256: string
+          size_bytes: number
+          uploaded_at?: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Update: {
+          id?: string
+          iv?: string
+          kind?: string
+          name?: string
+          plaintext_sha256?: string
+          size_bytes?: number
+          uploaded_at?: string
+          uploaded_by?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artifacts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_events: {
         Row: {
           actor: string | null

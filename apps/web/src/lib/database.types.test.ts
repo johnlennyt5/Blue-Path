@@ -27,6 +27,7 @@ type _allTables = Expect<
     | 'workspaces'
     | 'workspace_members'
     | 'workspace_invites'
+    | 'artifacts'
     | 'programs'
     | 'processes'
     | 'findings'

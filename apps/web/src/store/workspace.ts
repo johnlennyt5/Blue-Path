@@ -31,6 +31,15 @@ import {
   type ProgramSummary,
 } from '../lib/sync';
 import {
+  artifactKeyStore,
+  downloadArtifact,
+  listArtifacts,
+  removeArtifact,
+  storeArtifact,
+  type ArtifactRow,
+} from '../lib/artifacts';
+import { generateArtifactKey, importArtifactKey } from '../lib/artifactCrypto';
+import {
   listAuditTrail,
   listProgramEdges,
   listTrackedProcesses,
@@ -67,6 +76,9 @@ export interface WorkspaceState {
   trackerRows: TrackedProcess[];
   trackerEdges: ProgramEdgeRow[];
   auditTrail: AuditEntry[];
+  artifacts: ArtifactRow[];
+  /** Base64 AES key for the active workspace, or null (browser-local only). */
+  artifactKey: string | null;
   busy: boolean;
   error: string | null;
 
@@ -86,6 +98,12 @@ export interface WorkspaceState {
   updateRetention: (days: number | null) => Promise<void>;
   /** Admin-only: hard-delete synced content, prune audit per retention. */
   purgeActiveWorkspace: () => Promise<void>;
+  refreshArtifacts: () => Promise<void>;
+  generateArtifactKey: () => Promise<void>;
+  importArtifactKeyString: (keyBase64: string) => Promise<void>;
+  storeReleaseArtifact: () => Promise<void>;
+  fetchArtifact: (artifactId: string) => Promise<{ name: string; plaintext: Uint8Array } | null>;
+  deleteArtifact: (artifactId: string) => Promise<void>;
   refreshPrograms: () => Promise<void>;
   /** Sync the loaded release's analysis metadata into the named program. */
   syncRelease: (programName: string) => Promise<void>;
@@ -133,6 +151,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     trackerRows: [],
     trackerEdges: [],
     auditTrail: [],
+    artifacts: [],
+    artifactKey: null,
     busy: false,
     error: null,
 
@@ -226,6 +246,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
         trackerRows: [],
         trackerEdges: [],
         auditTrail: [],
+        artifacts: [],
+        artifactKey: artifactKeyStore.get(id),
       });
       await run('load members', async () => {
         const programs = await listPrograms(sb, id);
@@ -235,6 +257,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
           programs,
         });
         if (programs.length > 0) await get().loadTracker(programs[0]!.id);
+        if (get().workspaces.find((w) => w.id === id)?.artifactStorageEnabled === true) {
+          await get().refreshArtifacts();
+        }
       });
     },
 
@@ -323,6 +348,80 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
           syncStatus: null,
           memberNote: `Workspace purged: ${result.programsDeleted} program(s) hard-deleted, ${result.auditPruned} old audit event(s) pruned. Recorded in the audit trail.`,
         });
+      }),
+
+    refreshArtifacts: async () =>
+      run('artifacts', async () => {
+        const sb = getSupabase();
+        const active = get().activeWorkspaceId;
+        if (sb === null || active === null) return;
+        set({ artifacts: await listArtifacts(sb, active) });
+      }),
+
+    generateArtifactKey: async () =>
+      run('generate key', async () => {
+        const active = get().activeWorkspaceId;
+        if (active === null) return;
+        const key = await generateArtifactKey();
+        artifactKeyStore.set(active, key);
+        set({ artifactKey: key });
+      }),
+
+    importArtifactKeyString: async (keyBase64) => {
+      const active = get().activeWorkspaceId;
+      if (active === null) return;
+      // Reject fakes at paste time — a wrong key must never show "Key loaded".
+      try {
+        await importArtifactKey(keyBase64);
+      } catch {
+        set({
+          error:
+            'That is not a valid artifact key (expected the 44-character base64 key from "Copy key for teammates"). Nothing was saved.',
+        });
+        return;
+      }
+      artifactKeyStore.set(active, keyBase64.trim());
+      set({ artifactKey: keyBase64.trim(), error: null });
+    },
+
+    storeReleaseArtifact: async () =>
+      run('store artifact', async () => {
+        const sb = getSupabase();
+        const { session, activeWorkspaceId, artifactKey } = get();
+        if (sb === null || session === null || activeWorkspaceId === null) return;
+        if (artifactKey === null) throw new Error('generate or import the artifact key first');
+        const local = useSession.getState();
+        if (local.loaded === null) throw new Error('load a .bprelease file first');
+        await storeArtifact(sb, activeWorkspaceId, session.user.id, artifactKey, {
+          name: local.loaded.fileName,
+          kind: 'bprelease',
+          plaintext: new TextEncoder().encode(local.loaded.xml),
+        });
+        set({ artifacts: await listArtifacts(sb, activeWorkspaceId) });
+      }),
+
+    fetchArtifact: async (artifactId) => {
+      const sb = getSupabase();
+      const { activeWorkspaceId, artifactKey } = get();
+      if (sb === null || activeWorkspaceId === null || artifactKey === null) return null;
+      set({ busy: true, error: null });
+      try {
+        return await downloadArtifact(sb, activeWorkspaceId, artifactId, artifactKey);
+      } catch (error) {
+        set({ error: error instanceof Error ? error.message : String(error) });
+        return null;
+      } finally {
+        set({ busy: false });
+      }
+    },
+
+    deleteArtifact: async (artifactId) =>
+      run('delete artifact', async () => {
+        const sb = getSupabase();
+        const { session, activeWorkspaceId } = get();
+        if (sb === null || session === null || activeWorkspaceId === null) return;
+        await removeArtifact(sb, activeWorkspaceId, session.user.id, artifactId);
+        set({ artifacts: await listArtifacts(sb, activeWorkspaceId) });
       }),
 
     refreshPrograms: async () =>
