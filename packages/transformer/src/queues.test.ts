@@ -146,6 +146,15 @@ describe('S5-2 · performer queue conversion', () => {
       reasons.some((r) => r.includes('.SpecificContent(') && r.includes('rewritten')),
     ).toBe(true);
 
+    // Typed SpecificContent reads are not re-wrapped by the caller binding
+    // (CStr(CStr(…)) is valid VB but noise in the generated project).
+    const processItem = emitWorkflowXaml(
+      conversion.workflows.find((w) => w.path === 'Pages/Process_Item.xaml')!.doc,
+    );
+    expect(processItem).not.toContain('CStr(CStr(');
+    expect(processItem).not.toContain('CDbl(CDbl(');
+    expect(processItem).toContain('CDbl(io_TransactionItem.SpecificContent(&quot;Amount&quot;))');
+
     // And the reads themselves land in the Process Item page's XAML.
     const pageXaml = emitWorkflowXaml(
       conversion.workflows.find((w) => w.path === 'Pages/Process_Item.xaml')!.doc,

@@ -633,7 +633,25 @@ function coerceTo(vb: string, targetType: XamlType, sourceType?: XamlType): stri
   if ((targetType === 'Double' || targetType === 'Int32') && /^-?\d+(\.\d+)?$/.test(vb.trim()))
     return vb;
   if (targetType === 'Boolean' && /^(True|False)$/i.test(vb.trim())) return vb;
+  // Already coerced to this exact type (e.g. BL-012's typed SpecificContent
+  // reads) — CStr(CStr(x)) is valid but noise in the generated project.
+  if (isWrappedIn(vb.trim(), coercer)) return vb;
   return `${coercer}(${vb})`;
+}
+
+/** True when `vb` is exactly `fn(<balanced>)` — not merely starting with it. */
+function isWrappedIn(vb: string, fn: string): boolean {
+  if (!vb.startsWith(`${fn}(`) || !vb.endsWith(')')) return false;
+  let depth = 0;
+  for (let i = fn.length; i < vb.length; i++) {
+    if (vb[i] === '(') depth += 1;
+    else if (vb[i] === ')') {
+      depth -= 1;
+      // Closing the opening paren before the end → not a single wrapper.
+      if (depth === 0) return i === vb.length - 1;
+    }
+  }
+  return false;
 }
 
 function bindInvokeArguments(
