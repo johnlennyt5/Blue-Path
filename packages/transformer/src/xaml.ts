@@ -79,6 +79,13 @@ export type XActivity =
     }
   | { kind: 'writeLine'; displayName?: string; text: string }
   | {
+      kind: 'logMessage';
+      displayName?: string;
+      level: 'Info' | 'Warn' | 'Error' | 'Trace';
+      /** VB expression for the message. */
+      message: string;
+    }
+  | {
       kind: 'throw';
       displayName?: string;
       exception: 'BusinessRuleException' | 'Exception';
@@ -464,6 +471,13 @@ function emitActivity(w: Writer, activity: XActivity): void {
       });
       return;
     }
+
+    case 'logMessage':
+      // Official shape (REFramework 25.10 template): Level + Message attrs.
+      w.line(
+        `<ui:LogMessage${displayAttr(activity.displayName, 'Log Message')} Level="${activity.level}" Message="${expr(activity.message)}" />`,
+      );
+      return;
 
     case 'getTransactionItem': {
       // Modern System.Activities: ui:GetQueueItem, queue NAME in QueueType
