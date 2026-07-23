@@ -6,7 +6,7 @@
  *
  * v1 honesty note: the REFramework layout here is a sequence-based
  * transaction skeleton (Main → Framework/*.xaml) — the full queue-wired
- * transaction logic lands in S5-2/S5-3, and Config.xlsx is deliberately
+ * transaction logic lands in S5-2/S5-3; Config is seeded inline (BL-016) —
  * left to the migration report (binary artifacts are not emitted).
  */
 import { emitWorkflowXaml } from './xaml';
@@ -136,7 +136,7 @@ export function buildProjectJson(options: {
 // REFramework scaffold (sequence-based v1)
 // ---------------------------------------------------------------------------
 
-function reframeworkFiles(queueName?: string): { path: string; doc: WorkflowDoc }[] {
+function reframeworkFiles(queueName?: string, configEntries: ConfigEntry[] = []): { path: string; doc: WorkflowDoc }[] {
   const itemType = queueName !== undefined ? ('QueueItem' as const) : ('Object' as const);
   return [
     {
@@ -150,7 +150,19 @@ function reframeworkFiles(queueName?: string): { path: string; doc: WorkflowDoc 
           activities: [
             {
               kind: 'comment',
-              text: 'PrismShift scaffold: load configuration/assets here (BP environment variables map to Orchestrator assets — see AssetsManifest.json).',
+              text: 'PrismShift (BL-016): Config is seeded inline from the Blue Prism release — no spreadsheet file needed. Data/Config.json mirrors these values for reference; switch entries to Get Asset once Orchestrator assets exist (AssetsManifest.json lists them).',
+            },
+            {
+              kind: 'assign',
+              displayName: 'Build Config dictionary',
+              to: 'out_Config',
+              type: 'Object',
+              value:
+                configEntries.length === 0
+                  ? 'New System.Collections.Generic.Dictionary(Of String, Object)'
+                  : `New System.Collections.Generic.Dictionary(Of String, Object) From {${configEntries
+                      .map((entry) => `{"${entry.key.replaceAll('"', '""')}", "${entry.value.replaceAll('"', '""')}"}`)
+                      .join(', ')}}`,
             },
           ],
         },
@@ -323,6 +335,12 @@ function reframeworkMain(processFile: string, queueName?: string): WorkflowDoc {
 // Project assembly
 // ---------------------------------------------------------------------------
 
+export interface ConfigEntry {
+  key: string;
+  /** VB literal-safe value ('' allowed). */
+  value: string;
+}
+
 export interface BuildProjectOptions {
   name: string;
   description?: string;
@@ -331,6 +349,8 @@ export interface BuildProjectOptions {
   queueName?: string;
   /** The process workflows: first entry is the process entry point. */
   workflows: { path: string; doc: WorkflowDoc }[];
+  /** BL-016: seeds InitAllSettings' Config dictionary. */
+  configEntries?: ConfigEntry[];
 }
 
 export function buildProject(options: BuildProjectOptions): UiPathProject {
@@ -364,7 +384,7 @@ export function buildProject(options: BuildProjectOptions): UiPathProject {
     path: 'Main.xaml',
     content: emitWorkflowXaml(reframeworkMain(processEntry, options.queueName)),
   });
-  for (const scaffold of reframeworkFiles(options.queueName)) {
+  for (const scaffold of reframeworkFiles(options.queueName, options.configEntries ?? [])) {
     files.push({ path: scaffold.path, content: emitWorkflowXaml(scaffold.doc) });
   }
   for (const workflow of options.workflows) {

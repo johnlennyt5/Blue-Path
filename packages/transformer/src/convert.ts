@@ -822,20 +822,9 @@ function emitChain(
       }
 
       case 'wait': {
-        const condition = stage.conditions[0];
-        if (stage.conditions.length > 1) {
-          issue(ctx, stage, 'Additional wait conditions dropped — only the first is converted');
-        }
-        const generated =
-          condition?.elementId !== undefined
-            ? selectorFor(ctx, stage, condition.elementId)
-            : undefined;
-        if (condition?.elementId !== undefined && generated?.selector === undefined) {
-          // selectorFor already flagged it
-        }
-        const resultVar = `Exists_${sanitizeIdentifier(stage.name)}`;
-        ctx.extraVariables.set(resultVar, { name: resultVar, type: 'Boolean' });
-
+        // BL-015: EVERY condition converts — one UiElementExists per element,
+        // Or-combined into the decision (BP waits proceed on ANY condition).
+        const conditions = stage.conditions.length > 0 ? stage.conditions : [undefined];
         let timeoutMs: number;
         if (stage.timeoutSeconds !== undefined && stage.timeoutSeconds > 0) {
           timeoutMs = stage.timeoutSeconds * 1000;
@@ -844,13 +833,28 @@ function emitChain(
           issue(ctx, stage, 'Wait had no timeout in the source — defaulted to 30s (REL-003)');
         }
 
-        activities.push({
-          kind: 'elementExists',
-          displayName: stage.name,
-          selector: generated?.selector ?? '',
-          storeIn: resultVar,
-          timeoutMs,
-        });
+        const resultVars: string[] = [];
+        for (const [conditionIndex, waitCondition] of conditions.entries()) {
+          const generated =
+            waitCondition?.elementId !== undefined
+              ? selectorFor(ctx, stage, waitCondition.elementId)
+              : undefined;
+          const suffix = conditions.length > 1 ? `_${conditionIndex + 1}` : '';
+          const conditionVar = `Exists_${sanitizeIdentifier(stage.name)}${suffix}`;
+          ctx.extraVariables.set(conditionVar, { name: conditionVar, type: 'Boolean' });
+          resultVars.push(conditionVar);
+          activities.push({
+            kind: 'elementExists',
+            displayName:
+              conditions.length > 1
+                ? `${stage.name} (condition ${conditionIndex + 1})`
+                : stage.name,
+            selector: generated?.selector ?? '',
+            storeIn: conditionVar,
+            timeoutMs,
+          });
+        }
+        const resultVar = resultVars.join(' Or ');
 
         const branches = ctx.maps.choiceTargets.get(current) ?? [];
         const timeoutBranch = branches.find((b) => b.label === 'Time Out');

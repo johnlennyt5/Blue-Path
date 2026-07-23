@@ -120,3 +120,22 @@ describe('projectZipBlob', () => {
     expect(projectJson.main).toBe('Main.xaml');
   });
 });
+
+describe('BL-016 · REFramework Config seeded inline', () => {
+  it('InitAllSettings builds the dictionary; Data/Config.json mirrors it', async () => {
+    const { xml } = await loadSample('02-realistic-mid-size');
+    const { model } = await parseBpRelease(xml);
+    const dispatcher = model.processes.find((p) => p.name === 'Invoice Dispatcher')!;
+    const { project } = buildProcessExport(model, dispatcher);
+
+    const init = project.files.find((f) => f.path === 'Framework/InitAllSettings.xaml')!;
+    expect(init.content).toContain('Dictionary(Of String, Object) From');
+    expect(init.content).toContain('OrchestratorQueueName');
+    expect(init.content).toContain('Invoices Queue');
+    expect(init.content).not.toContain('Config.xlsx');
+
+    const configJson = project.files.find((f) => f.path === 'Data/Config.json')!;
+    const parsed = JSON.parse(configJson.content) as Record<string, string>;
+    expect(parsed['OrchestratorQueueName']).toBe('Invoices Queue');
+  });
+});
