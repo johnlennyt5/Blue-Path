@@ -7,10 +7,12 @@ import { buildReleaseExport, downloadBlob, releaseZipBlob } from './lib/exportPr
 import { formatBytes } from './lib/fileIntake';
 import { DropZone } from './components/DropZone';
 import { OwnerCards } from './components/OwnerCards';
+import { ReleaseRollup } from './components/ReleaseRollup';
 import { OwnerDetail } from './components/OwnerDetail';
 import { MigrationTracker } from './components/MigrationTracker';
 import { WorkspacePanel } from './components/WorkspacePanel';
 import { useSession } from './store/session';
+import { acceptedCodeOverrides, useAiStore } from './store/ai';
 import { useWorkspaceStore } from './store/workspace';
 
 export default function App() {
@@ -22,6 +24,7 @@ export default function App() {
   const selection = useSession((s) => s.selection);
   const reset = useSession((s) => s.reset);
   const [bundleNote, setBundleNote] = useState<string | null>(null);
+  const codeSuggestions = useAiStore((s) => s.codeSuggestions);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
 
   // Init at app load — the magic-link redirect carries the token in the URL
@@ -136,7 +139,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    const release = buildReleaseExport(model);
+                    const release = buildReleaseExport(model, acceptedCodeOverrides(codeSuggestions));
                     void releaseZipBlob(release).then((blob) => {
                       const name = (model.meta.packageName || 'release').replace(/[^A-Za-z0-9_-]+/g, '_');
                       downloadBlob(blob, `${name}-UiPath-projects.zip`);
@@ -170,6 +173,7 @@ export default function App() {
                 {bundleNote && <span className="text-xs text-slate-400">{bundleNote}</span>}
               </div>
             )}
+            {model && !selection && <ReleaseRollup model={model} findings={findings} />}
             {model && !selection && <OwnerCards model={model} findings={findings} />}
             {model && selection && <OwnerDetail model={model} findings={findings} />}
           </section>

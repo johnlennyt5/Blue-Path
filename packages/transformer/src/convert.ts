@@ -20,6 +20,7 @@ import type {
   ProcessNode,
   Stage,
 } from '@prismshift/ir';
+import { SENSITIVE_NAME } from '@prismshift/rules';
 import { translateBpExpression } from './bpExpression';
 import { generateObjectSelectors } from './selectors';
 import type { GeneratedSelector } from './selectors';
@@ -254,6 +255,8 @@ interface ConvertContext {
   punch: ConversionIssue[];
   converted: Set<string>;
   visited: Set<string>;
+  /** BL-005: user-accepted AI code translations by stage id. */
+  codeOverrides: Record<string, string>;
 }
 
 const TRANSACTION_ITEM = 'TransactionItem';
@@ -876,7 +879,7 @@ function emitChain(
       }
 
       case 'code': {
-        if (stage.language === 'jscript') {
+        if (stage.language === 'jscript' && ctx.codeOverrides[stage.id] === undefined) {
           activities.push({
             kind: 'comment',
             text: `PrismShift: JScript code stage "${stage.name}" cannot map to InvokeCode — port manually.`,
@@ -885,11 +888,19 @@ function emitChain(
           current = ctx.maps.nextFlow.get(current);
           break;
         }
+        const override = ctx.codeOverrides[stage.id];
+        if (override !== undefined) {
+          issue(
+            ctx,
+            stage,
+            'Code translated by an AI suggestion the user accepted — review the translation before go-live',
+          );
+        }
         activities.push({
           kind: 'invokeCode',
           displayName: stage.name,
-          language: stage.language === 'csharp' ? 'CSharp' : 'VBNet',
-          code: stage.body.trim(),
+          language: override !== undefined ? 'VBNet' : stage.language === 'csharp' ? 'CSharp' : 'VBNet',
+          code: override !== undefined ? override.trim() : stage.body.trim(),
           arguments: [
             ...stage.inputs.map((input) => ({
               name: sanitizeIdentifier(input.paramName),
@@ -948,6 +959,28 @@ function emitChain(
         current = ctx.maps.nextFlow.get(current);
         break;
 
+      case 'alert': {
+        // BL-011: BP alerts are operator notifications → Orchestrator log
+        // lines. If the message references a sensitive item (SEC-003 territory)
+        // the log activity carries the warning inline so nobody ships PII
+        // logging by accident.
+        if (SENSITIVE_NAME.test(stage.message.raw)) {
+          activities.push({
+            kind: 'comment',
+            text: `PrismShift SEC-003: this alert message references sensitive data — review before logging (see the Vulnerabilities tab).`,
+          });
+          issue(ctx, stage, 'Alert message references sensitive data (SEC-003) — review the log line');
+        }
+        activities.push({
+          kind: 'logMessage',
+          displayName: stage.name,
+          level: 'Info',
+          message: translate(ctx, stage, stage.message.raw),
+        });
+        current = ctx.maps.nextFlow.get(current);
+        break;
+      }
+
       default:
         activities.push({
           kind: 'comment',
@@ -975,6 +1008,7 @@ function convertPage(
   selectors: Map<string, GeneratedSelector>,
   objectRoutes: Map<string, { file: string; signature: PageSignature }>,
   punch: ConversionIssue[],
+  codeOverrides: Record<string, string> = {},
 ): { doc: WorkflowDoc; converted: Set<string> } {
   const maps = buildMaps(page);
   const converted = new Set<string>();
@@ -993,6 +1027,7 @@ function convertPage(
     punch,
     converted,
     visited: new Set(),
+    codeOverrides,
   };
 
   // Data/Collection stages count as converted: they became variables/args
@@ -1055,7 +1090,20 @@ function convertPage(
 // Process → conversion
 // ---------------------------------------------------------------------------
 
-export function convertProcess(model: AutomationModel, process: ProcessNode): ProcessConversion {
+export interface ConvertOptions {
+  /**
+   * BL-005: user-ACCEPTED AI code translations, keyed by stage id. Never
+   * auto-applied — the web UI only fills this after an explicit accept, and
+   * every applied override is punch-listed in the migration report.
+   */
+  codeOverrides?: Record<string, string>;
+}
+
+export function convertProcess(
+  model: AutomationModel,
+  process: ProcessNode,
+  options: ConvertOptions = {},
+): ProcessConversion {
   const punch: ConversionIssue[] = [];
   const workflows: { path: string; doc: WorkflowDoc }[] = [];
   const convertedIds = new Set<string>();
@@ -1090,6 +1138,7 @@ export function convertProcess(model: AutomationModel, process: ProcessNode): Pr
       new Map(),
       objectRoutes,
       punch,
+      options.codeOverrides ?? {},
     );
     for (const id of result.converted) convertedIds.add(id);
     workflows.push({ path, doc: result.doc });
@@ -1129,6 +1178,7 @@ export interface ObjectConversion {
 export function convertObject(
   _model: AutomationModel,
   object: BusinessObjectNode,
+  options: ConvertOptions = {},
 ): ObjectConversion {
   const punch: ConversionIssue[] = [];
   const workflows: { path: string; doc: WorkflowDoc }[] = [];
@@ -1153,6 +1203,7 @@ export function convertObject(
       selectorMap,
       new Map(),
       punch,
+      options.codeOverrides ?? {},
     );
     for (const id of result.converted) convertedIds.add(id);
     workflows.push({ path, doc: result.doc });

@@ -63,6 +63,35 @@ describe('buildReleaseExport', () => {
     expect(paths).toContain('Invoice_Dispatcher/MIGRATION_REPORT.md');
     expect(paths).toContain('Invoice_Performer/MIGRATION_REPORT.md');
   });
+
+  it('honors accepted code overrides in every bundled project (BL-005 regression)', async () => {
+    // User-found bug: the "Download all" bundle ignored accepted AI
+    // translations because buildReleaseExport never took overrides — only the
+    // per-process download did. An accepted override must reach every copy of
+    // the object workflow AND be punch-listed in each migration report.
+    const { xml } = await loadSample('02-realistic-mid-size');
+    const { model } = await parseBpRelease(xml);
+    const codeStage = model.objects
+      .flatMap((o) => o.pages)
+      .flatMap((p) => p.stages)
+      .find((s) => s.kind === 'code')!;
+
+    const release = buildReleaseExport(model, {
+      [codeStage.id]: "' AI-translated body\nInvoices = reader.ReadPending()",
+    });
+
+    const objectCopies = release.files.filter((f) =>
+      f.path.endsWith('Objects/Invoice_Entry_VBO/Get_Pending_Invoices.xaml'),
+    );
+    expect(objectCopies.length).toBe(2); // dispatcher + performer each ship one
+    for (const copy of objectCopies) {
+      expect(copy.content).toContain('AI-translated body');
+    }
+    const reports = release.files.filter((f) => f.path.endsWith('MIGRATION_REPORT.md'));
+    for (const report of reports) {
+      expect(report.content).toContain('AI suggestion the user accepted');
+    }
+  });
 });
 
 describe('projectZipBlob', () => {

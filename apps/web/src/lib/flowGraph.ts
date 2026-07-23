@@ -25,6 +25,10 @@ export interface FlowEdge {
   target: string;
   type: 'smoothstep';
   label?: string;
+  labelStyle?: { fill: string; fontSize: number };
+  labelBgStyle?: { fill: string; fillOpacity: number };
+  labelBgPadding?: [number, number];
+  labelBgBorderRadius?: number;
   animated: boolean;
   className: string;
   /** Arrowhead so flow direction is visible, colored to match the edge. */
@@ -113,15 +117,23 @@ export function buildFlowGraph(
     };
   });
 
+  // BL-018: labels get a solid backing chip so they stay readable when the
+  // path crosses node text; FlowView additionally hides them at low zoom.
+  const labelStyling = {
+    labelStyle: { fill: '#cbd5e1', fontSize: 11 },
+    labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
+    labelBgPadding: [4, 2] as [number, number],
+    labelBgBorderRadius: 4,
+  };
   const edges: FlowEdge[] = page.edges.map((edge, i) => ({
     id: `e${i}-${edge.from}-${edge.to}`,
     source: edge.from,
     target: edge.to,
     type: 'smoothstep',
     ...(edge.label !== undefined
-      ? { label: edge.label }
+      ? { label: edge.label, ...labelStyling }
       : EDGE_LABELS[edge.kind] !== undefined
-        ? { label: EDGE_LABELS[edge.kind] }
+        ? { label: EDGE_LABELS[edge.kind], ...labelStyling }
         : {}),
     animated: edge.kind === 'exception',
     className: EDGE_CLASSES[edge.kind],
@@ -139,6 +151,10 @@ export function buildFlowGraph(
           target: recover.id,
           type: 'smoothstep',
           label: 'on exception',
+          labelStyle: { fill: '#fda4af', fontSize: 11 },
+          labelBgStyle: { fill: '#0f172a', fillOpacity: 0.9 },
+          labelBgPadding: [4, 2] as [number, number],
+          labelBgBorderRadius: 4,
           animated: true,
           className: 'ps-edge-exception ps-edge-inferred',
           markerEnd: marker('exception'),

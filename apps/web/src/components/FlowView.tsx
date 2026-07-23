@@ -101,6 +101,17 @@ export function FlowView({ owner }: { owner: ProcessNode | BusinessObjectNode })
   useEffect(() => setNodes(graph.nodes), [graph.nodes, setNodes]);
   useEffect(() => setEdges(graph.edges), [graph.edges, setEdges]);
 
+  // BL-018: below this zoom, edge labels are unreadable smears over node
+  // text — hide them entirely and let the color/arrow language carry.
+  const [labelsVisible, setLabelsVisible] = useState(true);
+  useEffect(() => {
+    if (!labelsVisible) {
+      setEdges((current) => current.map((e) => ({ ...e, label: undefined })));
+    } else {
+      setEdges(graph.edges);
+    }
+  }, [labelsVisible, graph.edges, setEdges]);
+
   // Center the highlighted stage (deep-link target) once the canvas is live.
   // No duration: animated fits ride on d3 transitions, which some browser
   // environments silently kill.
@@ -153,6 +164,7 @@ export function FlowView({ owner }: { owner: ProcessNode | BusinessObjectNode })
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onMove={(_e, viewport) => setLabelsVisible(viewport.zoom >= 0.5)}
           nodeTypes={nodeTypes}
           onInit={setInstance}
           nodesDraggable={false}
