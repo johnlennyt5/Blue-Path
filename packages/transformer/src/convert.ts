@@ -207,6 +207,121 @@ function buildMaps(page: Page): PageMaps {
   return { byId, order, nextFlow, decisionTargets, choiceTargets, allTargets };
 }
 
+// ---------------------------------------------------------------------------
+// BL-014: polling-loop shape detection
+// ---------------------------------------------------------------------------
+
+/**
+ * The exact restructurable shape: one Get Next Item → guard decision → work →
+ * one Mark Completed/Exception → (anchors) → back to Get Next, with the other
+ * decision branch exiting. Anything deviating stays a manual-cycle flag.
+ */
+export interface PollingLoop {
+  getNextId: string;
+  decisionId: string;
+  /** Head of the work chain (the loop-side branch target). */
+  workHeadId: string;
+  /** The status write that closes each transaction (absorbed by framework). */
+  markId: string;
+  /** Anchor stages on the back-edge path (absorbed). */
+  absorbedAnchorIds: string[];
+}
+
+function isQueueActionStage(s: Stage): s is ActionStage {
+  return s.kind === 'action' && (s.queueName !== undefined || s.objectName === 'Work Queues');
+}
+const isGetNextStage = (s: Stage): boolean =>
+  isQueueActionStage(s) && /get next/.test(s.actionName.toLowerCase());
+const isMarkStatusStage = (s: Stage): boolean =>
+  isQueueActionStage(s) &&
+  /mark completed|complete|mark exception|exception/.test(s.actionName.toLowerCase());
+
+/** Can `fromId` reach `targetId` following any edges? */
+function reaches(maps: PageMaps, fromId: string, targetId: string): boolean {
+  const seen = new Set<string>();
+  const queue = [fromId];
+  while (queue.length > 0) {
+    const id = queue.pop()!;
+    if (id === targetId) return true;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    queue.push(...(maps.allTargets.get(id) ?? []));
+  }
+  return false;
+}
+
+/**
+ * Walk the loop side: single-successor stages only, ≥1 work stage, exactly one
+ * status write, then only anchors until landing back on the Get Next stage.
+ */
+function walkLoopSide(
+  maps: PageMaps,
+  headId: string,
+  getNextId: string,
+): { markId: string; anchors: string[] } | undefined {
+  let current: string | undefined = headId;
+  let markId: string | undefined;
+  let sawWork = false;
+  const anchors: string[] = [];
+  const visited = new Set<string>();
+
+  while (current !== undefined) {
+    if (current === getNextId) {
+      return markId !== undefined && sawWork ? { markId, anchors } : undefined;
+    }
+    if (visited.has(current)) return undefined;
+    visited.add(current);
+    const stage = maps.byId.get(current);
+    if (stage === undefined) return undefined;
+    // Branching or an exit inside the loop body → not the mechanical shape.
+    if (stage.kind === 'decision' || stage.kind === 'choice' || stage.kind === 'end') {
+      return undefined;
+    }
+    if (isMarkStatusStage(stage)) {
+      if (markId !== undefined) return undefined; // two status writes → deviant
+      markId = stage.id;
+    } else if (stage.kind === 'anchor') {
+      if (markId !== undefined) anchors.push(stage.id);
+    } else {
+      if (markId !== undefined) return undefined; // work after the status write → deviant
+      sawWork = true;
+    }
+    current = maps.nextFlow.get(current);
+  }
+  return undefined;
+}
+
+export function detectPollingLoop(page: Page): PollingLoop | undefined {
+  const maps = buildMaps(page);
+  const getNexts = page.stages.filter(isGetNextStage);
+  if (getNexts.length !== 1) return undefined;
+  const getNext = getNexts[0]!;
+
+  const decisionId = maps.nextFlow.get(getNext.id);
+  const decision = decisionId !== undefined ? maps.byId.get(decisionId) : undefined;
+  if (decision === undefined || decision.kind !== 'decision') return undefined;
+  const targets = maps.decisionTargets.get(decision.id);
+  if (targets?.onTrue === undefined || targets.onFalse === undefined) return undefined;
+
+  const candidates: [string, string][] = [
+    [targets.onTrue, targets.onFalse],
+    [targets.onFalse, targets.onTrue],
+  ];
+  for (const [loopHead, exitHead] of candidates) {
+    const walk = walkLoopSide(maps, loopHead, getNext.id);
+    if (walk === undefined) continue;
+    if (reaches(maps, exitHead, getNext.id)) return undefined; // both sides loop
+    return {
+      getNextId: getNext.id,
+      decisionId: decision.id,
+      workHeadId: loopHead,
+      markId: walk.markId,
+      absorbedAnchorIds: walk.anchors,
+    };
+  }
+  return undefined;
+}
+
 /** Earliest (document-order) stage reachable from ALL branch heads — the join. */
 function findJoin(maps: PageMaps, heads: (string | undefined)[]): string | undefined {
   const reachableSets = heads.map((head) => {
@@ -248,6 +363,25 @@ interface ConvertContext {
   objectRoutes: Map<string, { file: string; signature: PageSignature }>;
   /** True when this page retrieves its own TransactionItem. */
   pageHasGetTransaction: boolean;
+  /**
+   * BL-012: collections filled by Get Next Item on this page
+   * (collection name → field name → BP type). Field reads rewrite to
+   * TransactionItem.SpecificContent instead of DataTable access.
+   */
+  queueItemCollections: Map<string, Map<string, string>>;
+  /**
+   * BL-013: the identifier holding the queue item in this page —
+   * `TransactionItem` (local, page ran Get Next Item) or `io_TransactionItem`
+   * (received as an InOut argument from the caller).
+   */
+  transactionItemVar: string;
+  /** BL-013: true when this page receives the item via io_TransactionItem. */
+  receivesTransactionItem: boolean;
+  /**
+   * BL-014: plain `[Name]` refs resolving to queue-item expressions (e.g. an
+   * absorbed Get Next "Item ID" output → `io_TransactionItem.Reference`).
+   */
+  queueReferenceAliases: Map<string, string>;
   /** True while emitting the recovery chain (Rethrow is only legal there). */
   inRecovery: boolean;
   /** Variables added during conversion (e.g. TransactionItem). */
@@ -260,8 +394,11 @@ interface ConvertContext {
 }
 
 const TRANSACTION_ITEM = 'TransactionItem';
+export const TRANSACTION_ITEM_ARG = 'io_TransactionItem';
 
 function ensureTransactionItemVariable(ctx: ConvertContext): void {
+  // Pages that receive the item as io_TransactionItem need no local variable.
+  if (ctx.receivesTransactionItem) return;
   if (!ctx.extraVariables.has(TRANSACTION_ITEM)) {
     ctx.extraVariables.set(TRANSACTION_ITEM, { name: TRANSACTION_ITEM, type: 'QueueItem' });
   }
@@ -300,15 +437,35 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
     for (const output of stage.outputs) {
       const target = identifierFor(ctx, output.storeIn) ?? sanitizeIdentifier(output.storeIn);
       if (typeFor(ctx, target) === 'DataTable') {
-        activities.push({
-          kind: 'comment',
-          text: `PrismShift: BP output "${output.paramName}" carried the queue item data — read fields from ${TRANSACTION_ITEM}.SpecificContent("<field>") instead of ${target}.`,
-        });
-        issue(
-          ctx,
-          stage,
-          `Queue item data output "${output.paramName}" needs manual mapping from ${TRANSACTION_ITEM}.SpecificContent`,
-        );
+        // BL-012: when the collection's fields are known, downstream
+        // [Coll.Field] reads rewrite to typed SpecificContent access — the
+        // DataTable is skipped entirely, so it is never left unset.
+        const collectionItem = ctx.itemsByName.get(output.storeIn);
+        if (collectionItem?.fields?.length) {
+          ctx.queueItemCollections.set(
+            output.storeIn,
+            new Map(collectionItem.fields.map((field) => [field.name, field.dataType])),
+          );
+          activities.push({
+            kind: 'comment',
+            text: `PrismShift: BP output "${output.paramName}" carries the queue item data — [${output.storeIn}.<field>] reads below use ${TRANSACTION_ITEM}.SpecificContent("<field>") directly; ${target} stays unused.`,
+          });
+          issue(
+            ctx,
+            stage,
+            `Queue item data reads rewritten to ${TRANSACTION_ITEM}.SpecificContent — verify field names match the queue schema`,
+          );
+        } else {
+          activities.push({
+            kind: 'comment',
+            text: `PrismShift: BP output "${output.paramName}" carried the queue item data — read fields from ${TRANSACTION_ITEM}.SpecificContent("<field>") instead of ${target}.`,
+          });
+          issue(
+            ctx,
+            stage,
+            `Queue item data output "${output.paramName}" needs manual mapping from ${TRANSACTION_ITEM}.SpecificContent (collection definition has no fields)`,
+          );
+        }
       } else {
         activities.push({
           kind: 'assign',
@@ -367,15 +524,9 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
       kind: 'setTransactionStatus',
       displayName: stage.name,
       status: 'Successful',
-      transactionItem: TRANSACTION_ITEM,
+      transactionItem: ctx.transactionItemVar,
     });
-    if (!ctx.pageHasGetTransaction) {
-      issue(
-        ctx,
-        stage,
-        `SetTransactionStatus needs the ${TRANSACTION_ITEM} from Get Transaction Item — pass it into this page or restructure`,
-      );
-    }
+    noteTransactionItemSource(ctx, stage);
     return activities;
   }
 
@@ -387,16 +538,10 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
       displayName: stage.name,
       status: 'Failed',
       errorType: 'Application',
-      transactionItem: TRANSACTION_ITEM,
+      transactionItem: ctx.transactionItemVar,
       ...(reasonInput ? { reason: translate(ctx, stage, reasonInput.expression.raw) } : {}),
     });
-    if (!ctx.pageHasGetTransaction) {
-      issue(
-        ctx,
-        stage,
-        `SetTransactionStatus needs the ${TRANSACTION_ITEM} from Get Transaction Item — pass it into this page or restructure`,
-      );
-    }
+    noteTransactionItemSource(ctx, stage);
     return activities;
   }
 
@@ -407,6 +552,28 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
       text: `PrismShift TODO: queue action "${stage.actionName}" ("${stage.name}") not yet converted.`,
     },
   ];
+}
+
+/**
+ * BL-013: where does this page's TransactionItem come from? Local Get Next
+ * Item needs no note; a received io_TransactionItem gets a review note; a
+ * page with neither keeps the honest restructure flag.
+ */
+function noteTransactionItemSource(ctx: ConvertContext, stage: Stage): void {
+  if (ctx.pageHasGetTransaction) return;
+  if (ctx.receivesTransactionItem) {
+    issue(
+      ctx,
+      stage,
+      `${stage.name} uses the ${TRANSACTION_ITEM_ARG} passed in by the caller — verify every call site binds it`,
+    );
+    return;
+  }
+  issue(
+    ctx,
+    stage,
+    `SetTransactionStatus needs the ${TRANSACTION_ITEM} from Get Transaction Item — pass it into this page or restructure`,
+  );
 }
 
 function issue(ctx: ConvertContext, stage: Stage, reason: string): void {
@@ -430,8 +597,11 @@ function typeFor(ctx: ConvertContext, identifier: string): XamlType {
 function translate(ctx: ConvertContext, stage: Stage, raw: string): string {
   const loop = ctx.loopStack[ctx.loopStack.length - 1];
   const { vb, issues } = translateBpExpression(raw, {
-    resolveRef: (name) => identifierFor(ctx, name),
+    resolveRef: (name) => ctx.queueReferenceAliases.get(name) ?? identifierFor(ctx, name),
     ...(loop ? { loop } : {}),
+    ...(ctx.queueItemCollections.size > 0
+      ? { queueCollections: ctx.queueItemCollections, transactionItemVar: ctx.transactionItemVar }
+      : {}),
   });
   for (const reason of issues) issue(ctx, stage, reason);
   return vb;
@@ -502,6 +672,17 @@ function bindInvokeArguments(
       direction: calleeArg?.direction === 'inout' ? 'inout' : 'out',
       type: calleeArg?.type ?? typeFor(ctx, identifierFor(ctx, output.storeIn) ?? ''),
       expression: identifierFor(ctx, output.storeIn) ?? sanitizeIdentifier(output.storeIn),
+    });
+  }
+
+  // BL-013: callee expects the queue item — bind our own item through.
+  if (target?.args.some((arg) => arg.name === TRANSACTION_ITEM_ARG)) {
+    ensureTransactionItemVariable(ctx);
+    bindings.push({
+      name: TRANSACTION_ITEM_ARG,
+      direction: 'inout',
+      type: 'QueueItem',
+      expression: ctx.transactionItemVar,
     });
   }
 
@@ -999,6 +1180,16 @@ function emitChain(
 // Page → workflow document
 // ---------------------------------------------------------------------------
 
+/** BL-013: cross-page queue-item context computed by convertProcess's pre-pass. */
+interface CrossPageQueueContext {
+  /** This page receives the item via the io_TransactionItem argument. */
+  receivesTransactionItem: boolean;
+  /** Callee param name → queue collection fields fed in by a caller. */
+  queueParams: Map<string, Map<string, string>>;
+  /** BL-014: detected polling loop to absorb into the REFramework loop. */
+  pollingLoop?: PollingLoop;
+}
+
 function convertPage(
   owner: { dataItems: DataItem[] },
   page: Page,
@@ -1009,6 +1200,7 @@ function convertPage(
   objectRoutes: Map<string, { file: string; signature: PageSignature }>,
   punch: ConversionIssue[],
   codeOverrides: Record<string, string> = {},
+  crossPage: CrossPageQueueContext = { receivesTransactionItem: false, queueParams: new Map() },
 ): { doc: WorkflowDoc; converted: Set<string> } {
   const maps = buildMaps(page);
   const converted = new Set<string>();
@@ -1018,6 +1210,10 @@ function convertPage(
     signature,
     signaturesByPageName,
     loopStack: [],
+    queueItemCollections: new Map(),
+    transactionItemVar: crossPage.receivesTransactionItem ? TRANSACTION_ITEM_ARG : TRANSACTION_ITEM,
+    receivesTransactionItem: crossPage.receivesTransactionItem,
+    queueReferenceAliases: new Map(),
     itemsByName: new Map(owner.dataItems.map((d) => [d.name, d])),
     selectors,
     objectRoutes,
@@ -1030,6 +1226,16 @@ function convertPage(
     codeOverrides,
   };
 
+  // BL-013: Start params fed a queue collection by a caller — field reads on
+  // the receiving collection rewrite to SpecificContent on io_TransactionItem.
+  if (crossPage.queueParams.size > 0) {
+    const startBindings = page.stages.find((s) => s.kind === 'start');
+    for (const binding of (startBindings?.kind === 'start' ? startBindings.inputs : []) ?? []) {
+      const fields = crossPage.queueParams.get(binding.paramName);
+      if (fields !== undefined) ctx.queueItemCollections.set(binding.storeIn, fields);
+    }
+  }
+
   // Data/Collection stages count as converted: they became variables/args
   for (const stage of page.stages) {
     if (stage.kind === 'data' || stage.kind === 'collection') converted.add(stage.id);
@@ -1037,11 +1243,66 @@ function convertPage(
   const startStage = page.stages.find((s) => s.kind === 'start');
   if (startStage) converted.add(startStage.id);
 
-  const mainChain = emitChain(
-    ctx,
-    startStage ? maps.nextFlow.get(startStage.id) : undefined,
-    undefined,
-  );
+  let mainChain: XActivity[];
+  const polling = crossPage.pollingLoop;
+  if (polling !== undefined) {
+    // BL-014: the framework's transaction loop replaces the BP polling shape.
+    // Get Next → Framework\GetTransactionData; the guard decision and the
+    // status write are the loop machinery; only the work chain is emitted.
+    const getNext = maps.byId.get(polling.getNextId);
+    const mark = maps.byId.get(polling.markId);
+    if (getNext?.kind === 'action') {
+      ctx.pageHasGetTransaction = false; // the item now arrives as io_TransactionItem
+      for (const output of getNext.outputs) {
+        const item = ctx.itemsByName.get(output.storeIn);
+        if (item?.dataType === 'collection' && item.fields?.length) {
+          // BL-012 registration survives absorption — reads stay rewritten.
+          ctx.queueItemCollections.set(
+            output.storeIn,
+            new Map(item.fields.map((field) => [field.name, field.dataType])),
+          );
+        } else {
+          // Text outputs (the BP "Item ID") resolve to the item's Reference.
+          ctx.queueReferenceAliases.set(
+            output.storeIn,
+            `${ctx.transactionItemVar}.Reference`,
+          );
+        }
+      }
+    }
+    for (const id of [
+      polling.getNextId,
+      polling.decisionId,
+      polling.markId,
+      ...polling.absorbedAnchorIds,
+    ]) {
+      converted.add(id);
+    }
+    // The exit branch (queue empty) becomes the framework's own termination.
+    for (const stage of page.stages) {
+      if (stage.kind === 'end') converted.add(stage.id);
+    }
+    mainChain = [
+      {
+        kind: 'comment',
+        text: `PrismShift (BL-014): the BP polling loop is absorbed by the REFramework transaction loop — "${getNext?.name ?? 'Get Next Item'}" → Framework\\GetTransactionData, "${mark?.name ?? 'Mark Status'}" → Framework\\SetTransactionStatus. This workflow is one transaction's work; the queue item arrives as ${TRANSACTION_ITEM_ARG}.`,
+      },
+      ...emitChain(ctx, polling.workHeadId, polling.markId),
+    ];
+    if (mark !== undefined) {
+      issue(
+        ctx,
+        mark,
+        'Polling loop absorbed into the REFramework transaction loop — verify status semantics in Framework\\SetTransactionStatus match the BP loop',
+      );
+    }
+  } else {
+    mainChain = emitChain(
+      ctx,
+      startStage ? maps.nextFlow.get(startStage.id) : undefined,
+      undefined,
+    );
+  }
 
   const recoverStage = page.stages.find((s) => s.kind === 'recover');
   let recoveryChain: XActivity[] = [];
@@ -1124,11 +1385,101 @@ export function convertProcess(
   const signatures = process.pages.map((page) => buildPageSignature(process, page));
   const signaturesByPageName = new Map(process.pages.map((page, i) => [page.name, signatures[i]!]));
 
+  // BL-014 pre-pass: pages whose polling loop the framework loop absorbs
+  const pollingByPage = new Map<string, PollingLoop>();
+  for (const page of process.pages) {
+    const loop = detectPollingLoop(page);
+    if (loop !== undefined) pollingByPage.set(page.name, loop);
+  }
+
+  // BL-013 pre-pass: which pages must receive the TransactionItem?
+  const isQueueStage = isQueueActionStage;
+  const pageHasGetNext = (page: Page): boolean => page.stages.some(isGetNextStage);
+  const usesItemStatus = (page: Page): boolean => page.stages.some(isMarkStatusStage);
+
+  // a) queue collections produced per page (Get Next outputs with field defs)
+  const queueCollectionsByPage = new Map<string, Map<string, Map<string, string>>>();
+  for (const page of process.pages) {
+    const collections = new Map<string, Map<string, string>>();
+    for (const stage of page.stages) {
+      if (!isQueueStage(stage) || !/get next/.test(stage.actionName.toLowerCase())) continue;
+      for (const output of stage.outputs) {
+        const item = process.dataItems.find(
+          (d) => d.name === output.storeIn && d.dataType === 'collection',
+        );
+        if (item?.fields?.length) {
+          collections.set(output.storeIn, new Map(item.fields.map((f) => [f.name, f.dataType])));
+        }
+      }
+    }
+    if (collections.size > 0) queueCollectionsByPage.set(page.name, collections);
+  }
+
+  // b) callee pages fed a whole queue collection via a page-reference input
+  const queueParamsByPage = new Map<string, Map<string, Map<string, string>>>();
+  for (const page of process.pages) {
+    const collections = queueCollectionsByPage.get(page.name);
+    if (!collections) continue;
+    for (const stage of page.stages) {
+      if (stage.kind !== 'subsheetRef') continue;
+      for (const input of stage.inputs) {
+        const match = /^\s*\[([^\].]+)\]\s*$/.exec(input.expression.raw);
+        const fields = match ? collections.get(match[1]!.trim()) : undefined;
+        if (fields !== undefined) {
+          const calleeParams = queueParamsByPage.get(stage.targetPageName) ?? new Map();
+          calleeParams.set(input.paramName, fields);
+          queueParamsByPage.set(stage.targetPageName, calleeParams);
+        }
+      }
+    }
+  }
+
+  // c) pages needing io_TransactionItem: status writers and queue-collection
+  //    receivers without their own Get Next, plus (fixpoint) their callers.
+  const needsItem = new Set<string>();
+  for (const page of process.pages) {
+    // BL-014: absorbed pages lose their Get Next — the framework passes the item in.
+    if (pollingByPage.has(page.name)) {
+      needsItem.add(page.name);
+      continue;
+    }
+    if (pageHasGetNext(page)) continue;
+    if (usesItemStatus(page) || queueParamsByPage.has(page.name)) needsItem.add(page.name);
+  }
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const page of process.pages) {
+      if (needsItem.has(page.name) || pageHasGetNext(page)) continue;
+      if (page.stages.some((s) => s.kind === 'subsheetRef' && needsItem.has(s.targetPageName))) {
+        needsItem.add(page.name);
+        grew = true;
+      }
+    }
+  }
+
+  // d) augment signatures — callers bind io_TransactionItem like any InOut arg
+  for (const page of process.pages) {
+    if (!needsItem.has(page.name)) continue;
+    const signature = signaturesByPageName.get(page.name)!;
+    signature.args.push({ name: TRANSACTION_ITEM_ARG, direction: 'inout', type: 'QueueItem' });
+    signature.typeMap.set(TRANSACTION_ITEM_ARG, 'QueueItem');
+  }
+
   // Pass 2: convert pages
   for (const [index, page] of process.pages.entries()) {
     const isMain = index === 0;
-    const className = isMain ? 'Main' : sanitizeFileName(page.name);
-    const path = isMain ? 'Main.xaml' : `Pages/${sanitizeFileName(page.name)}.xaml`;
+    const polling = pollingByPage.get(page.name);
+    // BL-014: an absorbed main page becomes the REFramework Process workflow —
+    // the scaffold Main.xaml owns the loop, so the page can't be Main.xaml.
+    const className =
+      isMain && polling !== undefined ? 'Process' : isMain ? 'Main' : sanitizeFileName(page.name);
+    const path =
+      isMain && polling !== undefined
+        ? 'Process.xaml'
+        : isMain
+          ? 'Main.xaml'
+          : `Pages/${sanitizeFileName(page.name)}.xaml`;
     const result = convertPage(
       process,
       page,
@@ -1139,6 +1490,11 @@ export function convertProcess(
       objectRoutes,
       punch,
       options.codeOverrides ?? {},
+      {
+        receivesTransactionItem: needsItem.has(page.name),
+        queueParams: queueParamsByPage.get(page.name) ?? new Map(),
+        ...(polling !== undefined ? { pollingLoop: polling } : {}),
+      },
     );
     for (const id of result.converted) convertedIds.add(id);
     workflows.push({ path, doc: result.doc });

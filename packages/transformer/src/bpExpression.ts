@@ -21,6 +21,35 @@ export interface TranslateOptions {
   resolveRef?: (name: string) => string | undefined;
   /** Active collection loop, for `[Collection.Field]` row access. */
   loop?: { collectionName: string; rowVar: string };
+  /**
+   * BL-012: collections that carry the current queue item's data
+   * (collection name → field name → BP field type). `[Coll.Field]` reads
+   * rewrite to typed `TransactionItem.SpecificContent("Field")` access.
+   */
+  queueCollections?: Map<string, Map<string, string>>;
+  /**
+   * BL-013: identifier holding the queue item in the emitting scope —
+   * `TransactionItem` on the page that ran Get Next Item (default), or the
+   * `io_TransactionItem` argument in pages the item is passed into.
+   */
+  transactionItemVar?: string;
+}
+
+/** Option Strict-safe read of a SpecificContent field, typed per BP field type. */
+function specificContentAccess(field: string, bpType: string | undefined, itemVar: string): string {
+  const access = `${itemVar}.SpecificContent("${field}")`;
+  switch (bpType) {
+    case 'number':
+      return `CDbl(${access})`;
+    case 'flag':
+      return `CBool(${access})`;
+    case 'date':
+    case 'datetime':
+    case 'time':
+      return `CDate(${access})`;
+    default:
+      return `CStr(${access})`;
+  }
 }
 
 export interface TranslationResult {
@@ -451,6 +480,23 @@ function emit(
       }
       const base = ref.slice(0, dot);
       const field = ref.slice(dot + 1);
+      const queueFields = options.queueCollections?.get(base);
+      if (queueFields !== undefined) {
+        // BL-012: this collection carries the current queue item — read the
+        // field from SpecificContent instead of a never-filled DataTable.
+        const itemVar = options.transactionItemVar ?? 'TransactionItem';
+        const bpType = queueFields.get(field);
+        if (bpType === undefined) {
+          issues.push(
+            `[${ref}] read from queue item, but "${field}" is not in the collection definition — verify the field name against the queue schema`,
+          );
+        } else {
+          issues.push(
+            `[${ref}] rewritten to typed ${itemVar}.SpecificContent("${field}") — verify the field name matches the queue schema`,
+          );
+        }
+        return specificContentAccess(field, bpType, itemVar);
+      }
       if (options.loop && options.loop.collectionName === base) {
         issues.push(
           `Collection field [${ref}] mapped to ${options.loop.rowVar}("${field}") — verify the field's type usage`,

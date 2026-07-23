@@ -33,26 +33,23 @@ describe('S5-2 · dispatcher queue conversion', () => {
 });
 
 describe('S5-2 · performer queue conversion', () => {
-  it('Get Next Item → GetQueueItem + Reference assign; Mark Completed → Successful', async () => {
+  it('BL-014: polling machinery is absorbed — the main page is one transaction of work', async () => {
     const model = await sample2();
     const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
     const conversion = convertProcess(model, performer);
-    const mainXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
+    const processXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
 
-    expect(mainXaml).toContain(
-      '<ui:GetQueueItem DisplayName="Get Next Item" QueueType="[&quot;Invoices Queue&quot;]"',
-    );
-    expect(mainXaml).toContain('TransactionItem="[TransactionItem]"');
-    expect(mainXaml).toContain(
-      '[If(TransactionItem Is Nothing, String.Empty, TransactionItem.Reference)]',
-    );
-    expect(mainXaml).toContain(
-      '<ui:SetTransactionStatus DisplayName="Mark Completed" Status="Successful" TransactionItem="[TransactionItem]" />',
-    );
-    expect(mainXaml).toContain('<Variable x:TypeArguments="ui:QueueItem" Name="TransactionItem" />');
+    // The framework loop owns Get Next + status writes now (see
+    // Framework\GetTransactionData / SetTransactionStatus in the scaffold).
+    expect(conversion.workflows[0]!.path).toBe('Process.xaml');
+    expect(processXaml).not.toContain('<ui:GetQueueItem');
+    expect(processXaml).not.toContain('<ui:SetTransactionStatus');
+    expect(processXaml).toContain('BL-014');
+    // The work chain survives: one transaction = invoke Process Item.
+    expect(processXaml).toContain('Pages\\Process_Item.xaml');
   });
 
-  it('Mark Exception → Failed with reason; cross-page TransactionItem is flagged', async () => {
+  it('Mark Exception → Failed with reason; TransactionItem arrives as io_ argument', async () => {
     const model = await sample2();
     const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
     const conversion = convertProcess(model, performer);
@@ -63,12 +60,97 @@ describe('S5-2 · performer queue conversion', () => {
     expect(pageXaml).toContain('Reason="[&quot;Failed to enter invoice&quot;]"');
 
     const reasons = conversion.punchList.map((i) => i.reason);
-    expect(reasons.some((r) => r.includes('pass it into this page'))).toBe(true);
+    // BL-013: the restructure flag is gone — the item is passed through.
+    expect(reasons.some((r) => r.includes('pass it into this page'))).toBe(false);
+    expect(reasons.some((r) => r.includes('verify every call site binds it'))).toBe(true);
     expect(reasons.some((r) => r.includes('SpecificContent'))).toBe(true);
 
     // Full coverage — remaining punch entries are review flags, not gaps
     expect(conversion.convertedStageCount).toBe(conversion.totalStageCount);
     expect(conversion.coveragePct).toBe(100);
+  });
+
+  it('BL-013: Process Item receives io_TransactionItem; caller binds it; reads use SpecificContent', async () => {
+    const model = await sample2();
+    const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const conversion = convertProcess(model, performer);
+    const mainXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
+    const pageXaml = emitWorkflowXaml(conversion.workflows[1]!.doc);
+
+    // Callee declares the InOut argument and uses it for status + field reads
+    expect(pageXaml).toContain(
+      '<x:Property Name="io_TransactionItem" Type="InOutArgument(ui:QueueItem)" />',
+    );
+    expect(pageXaml).toContain('TransactionItem="[io_TransactionItem]"');
+    expect(pageXaml).toContain(
+      'CStr(io_TransactionItem.SpecificContent(&quot;Invoice Ref&quot;))',
+    );
+    expect(pageXaml).toContain('CDbl(io_TransactionItem.SpecificContent(&quot;Amount&quot;))');
+    // No stray local variable shadowing the argument
+    expect(pageXaml).not.toContain('<Variable x:TypeArguments="ui:QueueItem"');
+
+    // The absorbed main page passes its own io_TransactionItem through
+    expect(mainXaml).toContain(
+      '<InOutArgument x:TypeArguments="ui:QueueItem" x:Key="io_TransactionItem">[io_TransactionItem]</InOutArgument>',
+    );
+  });
+
+  it('BL-014: scaffold Main survives, invokes Process.xaml, and binds the item; deviant cycles stay manual', async () => {
+    const model = await sample2();
+    const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const conversion = convertProcess(model, performer);
+
+    const reasons = conversion.punchList.map((i) => i.reason);
+    expect(reasons.some((r) => r.includes('cycle needs manual restructuring'))).toBe(false);
+    expect(
+      reasons.some((r) => r.includes('absorbed into the REFramework transaction loop')),
+    ).toBe(true);
+    expect(conversion.coveragePct).toBe(100);
+
+    const project = buildProject({
+      name: performer.name,
+      layout: 'reframework',
+      queueName: 'Invoices Queue',
+      workflows: conversion.workflows,
+    });
+    // No Main.xaml collision anymore: scaffold Main + converted Process coexist.
+    expect(project.files.filter((f) => f.path === 'Main.xaml')).toHaveLength(1);
+    expect(project.files.some((f) => f.path === 'Process.xaml')).toBe(true);
+    const scaffoldMain = project.files.find((f) => f.path === 'Main.xaml')!;
+    expect(scaffoldMain.content).toContain('Process.xaml');
+    expect(scaffoldMain.content).toContain(
+      'x:Key="io_TransactionItem">[TransactionItem]</InOutArgument>',
+    );
+
+    // Deviant shape: the Monolith's retry cycle is NOT a polling loop — it
+    // keeps the honest manual flag.
+    const { xml } = await loadSample('03-the-monolith');
+    const { model: monolith } = await parseBpRelease(xml);
+    const reconciliation = monolith.processes[0]!;
+    const monolithConversion = convertProcess(monolith, reconciliation);
+    const monolithReasons = monolithConversion.punchList.map((i) => i.reason);
+    expect(monolithReasons.some((r) => r.includes('cycle needs manual restructuring'))).toBe(true);
+  });
+
+  it('BL-012: queue item data is a rewrite note, never a manual-mapping gap', async () => {
+    const model = await sample2();
+    const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const conversion = convertProcess(model, performer);
+    const reasons = conversion.punchList.map((i) => i.reason);
+
+    // The old gap — "needs manual mapping" with the variable left unset — is gone…
+    expect(reasons.some((r) => r.includes('needs manual mapping'))).toBe(false);
+    // …replaced by per-read review notes that fields come from SpecificContent
+    // (post-BL-014 the item variable in those notes is io_TransactionItem).
+    expect(
+      reasons.some((r) => r.includes('.SpecificContent(') && r.includes('rewritten')),
+    ).toBe(true);
+
+    // And the reads themselves land in the Process Item page's XAML.
+    const pageXaml = emitWorkflowXaml(
+      conversion.workflows.find((w) => w.path === 'Pages/Process_Item.xaml')!.doc,
+    );
+    expect(pageXaml).toContain('io_TransactionItem.SpecificContent');
   });
 });
 

@@ -23,29 +23,29 @@ describe('buildConversionView (S5-6)', () => {
     );
   });
 
-  it('classifies performer stages truthfully: cycle → manual, cross-page item → review', async () => {
+  it('classifies performer stages truthfully: absorbed loop → converted/review, no manual work left', async () => {
     const { xml } = await loadSample('02-realistic-mid-size');
     const { model } = await parseBpRelease(xml);
     const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
     const view = buildConversionView(model, performer, true);
 
-    // The polling loop-back makes this genuinely manual work (restructure
-    // into the REFramework transaction loop) — and it says so.
+    // BL-014: the polling loop is absorbed by the REFramework transaction
+    // loop — Get Next Item is framework machinery now, not manual work.
     const getNext = view.rows.find((r) => r.stageName === 'Get Next Item')!;
     expect(getNext.uipath).toBe('ui:GetQueueItem → TransactionItem');
-    expect(getNext.status).toBe('manual');
-    expect(getNext.notes.join(' ')).toContain('Reference');
-    expect(getNext.notes.join(' ')).toContain('cycle');
+    expect(getNext.status).toBe('converted');
 
     // Cross-page TransactionItem is a review item, not a conversion gap
     const markException = view.rows.find((r) => r.stageName === 'Mark Exception')!;
     expect(markException.uipath).toBe('ui:SetTransactionStatus (Failed)');
     expect(markException.status).toBe('review');
 
+    // The absorbed status write carries the verify-semantics review note
     const markCompleted = view.rows.find((r) => r.stageName === 'Mark Completed')!;
-    expect(markCompleted.status).toBe('converted');
+    expect(markCompleted.status).toBe('review');
+    expect(markCompleted.notes.join(' ')).toContain('absorbed');
     expect(view.reviewCount).toBeGreaterThan(0);
-    expect(view.manualCount).toBeGreaterThan(0);
+    expect(view.manualCount).toBe(0);
   });
 
   it('object UI stages inherit their selector confidence', async () => {
