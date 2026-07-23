@@ -16,6 +16,8 @@ describe('buildProcessExport', () => {
       'project.json',
       'Main.xaml',
       'Pages/Calculate_Payment.xaml',
+      'Tests/Loan_Payment_Calculator_HappyPath.xaml',
+      'Tests/Loan_Payment_Calculator_ExceptionPath.xaml',
       'AssetsManifest.json',
       'QueuesManifest.json',
       'MIGRATION_REPORT.md',

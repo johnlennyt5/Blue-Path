@@ -21,6 +21,8 @@
 
 ### Completed log
 
+- **2026-07-22 — BL-006 (backlog-test-harness)** Test-harness generation: Given/When/Then test-case stubs (happy + exception path) per process, argument-wired, assertion placeholders that fail loudly, exception path with inverted TryCatch semantics; gate-proven activity shapes only; Testing dependency + fileInfoCollection registration in project.json; ships in every export (web + CLI, embed + library). Also fixed turbo test-task invalidation (dependsOn ^test) after cache masked a cross-package failure. 5 new tests, 8/8 green.
+
 - **2026-07-22 — BL-008 (backlog-library-export, stacked on backlog-cli)** VBO → publishable UiPath Library export: library projects (outputType Library, root workflows as public activities, per-workflow entryPoints, selector checklist inside), embed-vs-library delivery toggle across process/release exports (library mode: no copies, dependency entries, install+swap punch items, one shared Libraries/<Object>/ per bundle). In the UI (object "⬇ Library project" button + bundle checkbox), the CLI (`--objects library`, E2E-verified), and MNT-003's recommendation. Residual documented per BL-017 doctrine: auto-rewiring invocations awaits library-activity XAML ground truth. Branch deliberately stacked on backlog-cli (shared export assembly) after the user caught the near-miss of basing it on main — merge cli before this.
 
 - **2026-07-22 — BL-003 (backlog-cli)** `prismshift` CLI shipped — analysis + CI gates + conversion in the terminal, zero network. Same pipeline as the web app (byte-identical findings proven across the corpus). Export assembly lifted into @prismshift/reports (shared web/CLI). Monorepo now 8 packages. 10 new tests; tarball acceptance verified on Node 25.
