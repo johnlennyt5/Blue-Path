@@ -140,14 +140,17 @@ describe('S5-2 · performer queue conversion', () => {
 
     // The old gap — "needs manual mapping" with the variable left unset — is gone…
     expect(reasons.some((r) => r.includes('needs manual mapping'))).toBe(false);
-    // …replaced by the review note that field reads use SpecificContent.
+    // …replaced by per-read review notes that fields come from SpecificContent
+    // (post-BL-014 the item variable in those notes is io_TransactionItem).
     expect(
-      reasons.some((r) => r.includes('rewritten to TransactionItem.SpecificContent')),
+      reasons.some((r) => r.includes('.SpecificContent(') && r.includes('rewritten')),
     ).toBe(true);
 
-    // The Main Page comment tells the reviewer the DataTable is bypassed.
-    const mainXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
-    expect(mainXaml).toContain('stays unused');
+    // And the reads themselves land in the Process Item page's XAML.
+    const pageXaml = emitWorkflowXaml(
+      conversion.workflows.find((w) => w.path === 'Pages/Process_Item.xaml')!.doc,
+    );
+    expect(pageXaml).toContain('io_TransactionItem.SpecificContent');
   });
 });
 

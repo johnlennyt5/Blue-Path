@@ -23,7 +23,9 @@ describe('ReleaseRollup', () => {
     expect(screen.getByText('3 components')).toBeTruthy();
     expect(screen.getByText('90')).toBeTruthy(); // avg of 74/100/96
     expect(screen.getByText('C')).toBeTruthy(); // worst grade
-    expect(screen.getByText('9.3 h')).toBeTruthy(); // dispatcher 2.9 + performer 6.4
+    // Down from 9.3 h pre-BL-014: absorbing the performer's polling loop into
+    // the REFramework transaction loop removed restructuring work.
+    expect(screen.getByText('8.3 h')).toBeTruthy();
     expect(screen.getByText(/1 critical/)).toBeTruthy();
   });
 });

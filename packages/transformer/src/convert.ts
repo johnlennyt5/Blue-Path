@@ -444,7 +444,7 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
         if (collectionItem?.fields?.length) {
           ctx.queueItemCollections.set(
             output.storeIn,
-            new Map(collectionItem.fields.map((field) => [field.name, field.type])),
+            new Map(collectionItem.fields.map((field) => [field.name, field.dataType])),
           );
           activities.push({
             kind: 'comment',
@@ -1259,7 +1259,7 @@ function convertPage(
           // BL-012 registration survives absorption — reads stay rewritten.
           ctx.queueItemCollections.set(
             output.storeIn,
-            new Map(item.fields.map((field) => [field.name, field.type])),
+            new Map(item.fields.map((field) => [field.name, field.dataType])),
           );
         } else {
           // Text outputs (the BP "Item ID") resolve to the item's Reference.
@@ -1408,7 +1408,7 @@ export function convertProcess(
           (d) => d.name === output.storeIn && d.dataType === 'collection',
         );
         if (item?.fields?.length) {
-          collections.set(output.storeIn, new Map(item.fields.map((f) => [f.name, f.type])));
+          collections.set(output.storeIn, new Map(item.fields.map((f) => [f.name, f.dataType])));
         }
       }
     }
