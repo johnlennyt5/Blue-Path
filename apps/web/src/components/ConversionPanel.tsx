@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import type { AutomationModel, BusinessObjectNode, ProcessNode } from '@prismshift/ir';
+import type { AutomationModel, BusinessObjectNode, CodeStage, ProcessNode } from '@prismshift/ir';
 import { buildConversionView } from '../lib/conversionView';
 import type { StageMappingRow } from '../lib/conversionView';
+import { useAiStore } from '../store/ai';
 
 const STATUS_STYLES: Record<StageMappingRow['status'], string> = {
   converted: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40',
@@ -31,6 +32,16 @@ export function ConversionPanel({
   );
 
   const pages = [...new Set(view.rows.map((r) => r.pageName))];
+  const ai = useAiStore();
+  const codeStageById = useMemo(() => {
+    const map = new Map<string, CodeStage>();
+    for (const page of owner.pages) {
+      for (const stage of page.stages) {
+        if (stage.kind === 'code') map.set(stage.id, stage);
+      }
+    }
+    return map;
+  }, [owner]);
 
   return (
     <div>
@@ -75,6 +86,17 @@ export function ConversionPanel({
                               ))}
                             </ul>
                           )}
+                          {row.stageKind === 'code' && ai.enabled && (
+                            <CodeSuggestionBlock
+                              stageId={row.stageId}
+                              stage={codeStageById.get(row.stageId)}
+                            />
+                          )}
+                          {row.stageKind === 'code' && !ai.enabled && (
+                            <p className="mt-1 font-sans text-[11px] text-slate-500">
+                              Enable AI (Summary tab) to get a VB.NET translation suggestion.
+                            </p>
+                          )}
                         </td>
                         <td className="py-1.5 pr-3">
                           <span
@@ -93,6 +115,85 @@ export function ConversionPanel({
             </div>
           </details>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** BL-005: original vs AI-suggested code, side by side, accept/decline. */
+function CodeSuggestionBlock({
+  stageId,
+  stage,
+}: {
+  stageId: string;
+  stage: CodeStage | undefined;
+}) {
+  const ai = useAiStore();
+  if (stage === undefined) return null;
+  const suggestion = ai.codeSuggestions[stageId];
+
+  if (suggestion === undefined) {
+    return (
+      <button
+        type="button"
+        disabled={ai.busy}
+        onClick={() => void ai.suggestCode(stageId, stage.name, stage.language, stage.body)}
+        className="mt-1.5 rounded border border-violet-500/40 bg-violet-500/10 px-2 py-0.5 font-sans text-[11px] text-violet-300 hover:bg-violet-500/20 disabled:opacity-50"
+      >
+        {ai.busy ? 'Asking…' : `✨ Suggest ${stage.language === 'jscript' ? 'VB.NET port' : 'idiomatic translation'}`}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border border-violet-500/30 bg-slate-950 p-2 font-sans">
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-slate-500">
+            Original ({suggestion.originalLanguage})
+          </p>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-2 text-[11px] text-slate-300">
+            {suggestion.original}
+          </pre>
+        </div>
+        <div>
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-violet-300">
+            AI suggestion (VB.NET) — never auto-applied
+          </p>
+          <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-2 text-[11px] text-violet-200">
+            {suggestion.suggestion}
+          </pre>
+        </div>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        {suggestion.status === 'proposed' && (
+          <>
+            <button
+              type="button"
+              onClick={() => ai.acceptSuggestion(stageId)}
+              className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300 hover:bg-emerald-500/20"
+            >
+              Accept — use in export
+            </button>
+            <button
+              type="button"
+              onClick={() => ai.declineSuggestion(stageId)}
+              className="rounded border border-slate-700 px-2 py-0.5 text-[11px] text-slate-300 hover:border-slate-500"
+            >
+              Decline — keep verbatim
+            </button>
+          </>
+        )}
+        {suggestion.status === 'accepted' && (
+          <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+            ✓ Accepted — the export uses this translation (punch-listed for review)
+          </span>
+        )}
+        {suggestion.status === 'declined' && (
+          <span className="rounded border border-slate-700 px-2 py-0.5 text-[11px] text-slate-400">
+            Declined — export keeps the original verbatim
+          </span>
+        )}
       </div>
     </div>
   );

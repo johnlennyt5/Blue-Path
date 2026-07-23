@@ -11,11 +11,12 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 
 ## A. Product features (post-v1, from the original plan)
 
-### BL-001 · Encrypted artifact storage
+### BL-001 · Encrypted artifact storage — ✅ done (2026-07-22, backlog-encrypted-artifacts)
 - **Origin:** ARCHITECTURE §1.1/§11 invariant; PROJECT_PLAN post-v1 list. The `workspaces.artifact_storage_enabled` flag exists in the Sprint-6 schema but the feature is flag-only.
 - **Context:** Workspace Mode syncs metadata only. Some teams will want the raw `.bprelease`/generated XAML stored centrally for audit.
 - **Expected behavior:** When a workspace admin enables the flag, artifacts are encrypted **client-side with AES-GCM before upload** (Web Crypto), keys generated and held by the workspace (never sent to Supabase); storage via Supabase Storage; download+decrypt round-trip in the browser. Key loss = artifact loss, stated explicitly in the UI.
 - **Acceptance:** Network inspector shows only ciphertext leaving the browser; a pgTAP/RLS test proves cross-workspace isolation of artifact rows; decrypt round-trip test; admin-only toggle audited in `audit_events`.
+- **Done (2026-07-22):** Migration `20260723000000_encrypted_artifacts.sql`: `artifacts` metadata table (iv + plaintext SHA-256, never content) with RLS (members read, admin/editor insert **only when the workspace flag is on** — even admins are refused when it's off, uploaded_by must be caller, admin delete) + private `artifacts` storage bucket with per-workspace path-prefix policies. **12 new pgTAP assertions (54 total)** incl. cross-workspace invisibility of rows AND storage objects. Client: `artifactCrypto.ts` (AES-GCM-256 Web Crypto; key generated client-side, exported base64 for out-of-band sharing, held in localStorage per workspace, never uploaded) + `artifacts.ts` (store = encrypt→row→upload→audit with orphan-row rollback; download = fetch→decrypt→SHA-256 integrity verify, fails closed on wrong key/tamper). Panel: "Encrypted artifact vault" (flag-gated) — generate/import/copy key with the key-loss warning stated twice, store-loaded-release button, list with decrypt-&-download + admin delete. Toggle audit was already in (S6-7). Tests: byte-perfect round-trip on a real corpus release, ciphertext-marker scan (the network AC), wrong-key + GCM-tamper fail-closed, upload-payload inspection via fake client, integrity-mismatch rejection, panel state rendering. Events: `artifact.stored`/`artifact.deleted`.
 
 ### BL-002 · SSO (SAML/OIDC)
 - **Origin:** ARCHITECTURE §8.4; post-v1 list.
@@ -28,15 +29,19 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Acceptance:** Runs on Node 20+ from a packed tarball; JSON schema documented; corpus samples produce byte-identical output to the web app's analysis.
 - **Done (2026-07-22):** `packages/cli` (@prismshift/cli, bin `prismshift`): `analyze <files…> [--json] [--fail-below A-D] [--max-critical N] [--convert <dir>]`; exit codes 0/1/2/3 (pass/gate/parse/usage). The pure export assembly (`buildProcessExport`/`buildReleaseExport`) was lifted from apps/web into @prismshift/reports so CLI and web share one implementation (web keeps only ZIP+download). esbuild-bundled single-file dist (297 KB, deps inlined). **All acceptance criteria proven in tests**: byte-identical findings vs the web pipeline on all 4 corpus samples, deterministic JSON, gates + exit codes end-to-end, `--convert` writes the full per-process project folders, and a packed-tarball run (`pnpm pack` → extract → node dist/cli.js → exit 0). JSON schema (v1) documented in the package README with a GitHub Actions example.
 
-### BL-004 · Automation Anywhere source adapter
+### BL-004 · Automation Anywhere source adapter — ✅ done (2026-07-22, backlog-aa-adapter; v1 scope: single A360 .bot JSON)
 - **Origin:** Post-v1 list; IR was designed vendor-neutral for this.
 - **Expected behavior:** A second parser package (`@prismshift/parser-aa`) emitting the same IR from AA exports. **No changes to rules/transformer/reports permitted** — that's the test of the IR abstraction. Corpus gains AA samples with answer keys in the existing schema.
 - **Acceptance:** An AA sample passes the full pipeline (findings, summaries, conversion) with only the new parser package added.
+- **Done (2026-07-22):** `packages/parser-aa` (@prismshift/parser-aa, deps: ir only): `parseAaBot(json)` maps A360 `.bot` exports → IR — variables → data items/params (type map incl. CREDENTIAL→password), `$Var$` interpolation → `[Var]` refs (`aaExpressionToIr`), nodes → stage chains: assign→calculation, if/else→decision with true/false branches joining at an anchor, loop→loopStart/loopEnd pairs, runTask→action (external bots = dependency edges + honest conversion punch), log/messageBox→alert, comment→note, errorHandler/catch→recover…resume, **unknown commands→generic stage + warning (never dropped)**; fails soft on malformed input. Corpus gained `aa-01-invoice-loader.bot` + answer key in the existing schema (loadAaSample/AA_SAMPLES) with three planted findings (SEC-002 password param, SEC-004 UNC path, REL-001 no error handler). **Acceptance proven verbatim**: bidirectional answer-key diff clean, scoring (76/C), summaries, and conversion (ui:ForEachRow + If + translated VB expressions, 64% coverage with honest punch) — all with ZERO changes to rules/transformer/reports (git diff touches only parser-aa + corpus).
+- **Residual:** .zip package exports and v11 .atmx not yet handled (single .bot JSON v1); web-app intake for .bot files is a follow-up (adapter is currently CLI/test-level); more AA command mappings grow via the real-export protocol.
 
-### BL-005 · LLM-assisted code-stage translation
+### BL-005 · LLM-assisted code-stage translation — ✅ done (2026-07-22, backlog-code-translation)
 - **Origin:** Post-v1 list. Today, VB/C# code stages carry over verbatim into `ui:InvokeCode` flagged for review (S5-4); JScript is refused.
 - **Expected behavior:** Opt-in (same disclosure gating as the S7 AI layer): send the code body — code only, after the S7-1 redaction rules — to the LLM for idiomatic .NET translation, returned as a *suggestion* diff the user accepts per stage; never auto-applied. JScript → VB.NET proposals included.
 - **Acceptance:** Suggestion visible side-by-side with the original; accepting updates the emitted InvokeCode; declining keeps verbatim; everything logged in the migration report.
+- **Done (2026-07-22):** Privacy mechanism: `redactCodeLiterals` swaps string literals for `__LIT_n__` placeholders BEFORE the code leaves the browser, `restoreLiterals` re-inflates them in the returned suggestion — semantics preserved, values never travel; `assertLiteralsRedacted` runtime tripwire on every payload. llm-proxy gained `mode:'code'` (VB/C#/JScript → idiomatic VB.NET prompt that must reproduce placeholders exactly; audited as `ai.code_translation`; **rate limit now counts both AI event kinds**). Converter: `ConvertOptions.codeOverrides` (stage id → accepted code) threaded through convertProcess/convertObject — override emits into InvokeCode as VBNet + punch entry "translated by an AI suggestion the user accepted" (→ migration report); **an accepted VB.NET port unlocks previously-refused JScript stages**; no override = verbatim (regression-locked). UI: Conversion tab code rows get "✨ Suggest translation" (AI opt-in gated), side-by-side original vs suggestion, Accept ("use in export") / Decline ("keep verbatim") with status chips; accepted overrides flow through OwnerDetail downloads. E2E-proven with a real JScript→VB.NET translation through the proxy (ActiveXObject→CreateObject, placeholder preserved). 8 new tests.
+- **Residual:** overrides currently apply to the web per-process download path; CLI/release-bundle override passing is a small follow-up (shared assembly lives on the cli branch).
 
 ### BL-006 · Test-harness generation — ✅ done (2026-07-22, backlog-test-harness, stacked on backlog-library-export)
 - **Origin:** Post-v1 list.
@@ -74,7 +79,7 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Origin:** 2026-07-21 user question ("I thought UiPath ran on BPMN files").
 - **Decision:** BPMN in UiPath is Maestro's *orchestration* layer; robot logic remains XAML. BP processes map to XAML processes. Generating Maestro BPMN that orchestrates our generated processes is a possible future product on top — record interest here if it recurs; not scoped further.
 
-### BL-011 · Alert stage conversion
+### BL-011 · Alert stage conversion — ✅ done (2026-07-22, backlog-quick-wins)
 - **Origin:** Sprint 5; converter currently emits a TODO comment + punch entry for `alert` stages; the Conversion tab labels them "— (alert stage pending)". Corpus: the Monolith's "Log Customer Detail".
 - **Expected behavior:** `alert` → `ui:LogMessage` (Level Info) with the translated message expression — plus a guard: if the message triggered SEC-003 (PII to logs), the emitted activity should carry a comment noting the finding so nobody ships PII logging by accident.
 - **Acceptance:** Monolith alert converts; punch entry disappears; SEC-003-flagged alerts carry the warning comment; coverage on Monolith rises accordingly.
@@ -94,15 +99,17 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 - **Expected behavior:** Recognize the specific shape [GetNext → guard-decision(empty?) → work → MarkStatus → back-edge] and, instead of a cycle warning, emit the work as the REFramework `Process` body with the loop handled by the framework's transaction loop. Anything deviating from the exact shape stays manual.
 - **Acceptance:** Performer main page converts without the cycle punch entry, its work living in Process.xaml; a deliberately-deviant cycle still flags manual; Studio-openable.
 
-### BL-015 · Expression translator gaps
+### BL-015 · Expression translator gaps — ✅ done (2026-07-22, backlog-conversion-fidelity-2)
 - **Origin:** S5-1/S5-3 deliberate flags. Current: `DateDiff` supports only `"d"`; `DateAdd` unknown intervals flagged; `ExceptionStage()` refused; multi-condition waits convert first condition only (S5-4); regex attribute matches approximated (S5-4 selectors).
 - **Expected behavior:** Extend per real-export demand (S8-6 protocol will reveal frequency): DateDiff w/m/h/n/s via TimeSpan components; wait stages with N conditions → N ElementExists + Or-combined If; keep the flag-don't-guess contract for anything else.
 - **Acceptance:** Each added mapping lands with table-driven cases in `bpExpression.test.ts` (or wait cases in selectors tests); flags removed only where a mapping now exists.
+- **Done (2026-07-22):** DateDiff full interval set — h/n/s via TimeSpan components, m/yyyy/q/ww/w via native VB `DateDiff(DateInterval.X, …)`; DateAdd calendar intervals (q/ww/w/y) via native VB `DateAdd`; unknown intervals still flag (never guess). **Multi-condition waits**: every condition now emits its own UiElementExists, Or-combined into the decision (BP waits proceed on ANY condition); "conditions dropped" flag removed; suffixed Exists_*_n variables. 8 new table cases + 2 wait tests; the two previously-flagged intervals moved to the clean table per the acceptance rule. ExceptionStage() remains refused by design.
 
-### BL-016 · REFramework Config.xlsx
+### BL-016 · REFramework Config.xlsx — ✅ done (2026-07-22, backlog-conversion-fidelity-2; JSON-inline route chosen)
 - **Origin:** S4-2 honesty note — binary artifacts aren't emitted; InitAllSettings is a commented scaffold.
 - **Expected behavior:** Either generate a real `Data/Config.xlsx` (SheetJS — weigh the dependency against Local Mode bundle size) seeded from AssetsManifest entries, or emit `Config.json` + an InitAllSettings that reads it natively, documented in the migration report. Decide when Sprint-8 packaging is measured.
 - **Acceptance:** Fresh REFramework export runs InitAllSettings in Studio without manual file creation.
+- **Done (2026-07-22):** Chose the no-dependency route (Local Mode bundle stays lean): InitAllSettings now builds `out_Config` as a real `Dictionary(Of String, Object) From {{…}}` **seeded inline from the release** — OrchestratorQueueName, every environment variable with its exported value, credential-asset name entries — zero file reads, so it runs in Studio with no manual creation (the acceptance verbatim). `Data/Config.json` ships alongside as the human-readable mirror; the scaffold comment points to Get Asset + AssetsManifest.json for the Orchestrator upgrade path (which `prismshift orchestrate` can now provision). Covered by export tests on corpus #2.
 
 ### BL-017 · Studio-shape fidelity backstop (queue/UI activity XAML) — ✅ done (2026-07-21, Sprint 5 gate)
 - **Origin:** S5 sprint-end risk note: `SetTransactionStatus`, `Target` descriptors, `InvokeCode` attribute shapes were written from knowledge, validated well-formed but **pending the user's Studio Desktop gate on the performer ZIP**.
@@ -129,9 +136,9 @@ Related: `PROJECT_PLAN.md` (sprint work + the original post-v1 list), `ARCHITECT
 
 ## C. Polish / S8 candidates (cosmetic, batched for the hardening sprint)
 
-- **BL-018 · Flow-view edge label overlap** (S3-2): "on exception" labels can overlap node text at some zooms (seen next to Resume). Candidate fixes: label offset along edge path, or hide labels below a zoom threshold.
-- **BL-019 · SEC-004 message escaping** (Sprint-2 review): UNC paths display as `\\\\fs01\\…` because messages JSON-stringify the value; render raw path in UI/report contexts.
-- **BL-020 · Release-level view**: landing page could show release-wide aggregates (worst grade, total findings by severity, estate effort sum from migration reports) above the owner cards. Raised implicitly by the "download all" review (2026-07-21); pairs naturally with S6's program dashboard — check overlap before building.
+- ✅ **BL-018 (done 2026-07-22, backlog-quick-wins)** · Flow-view edge label overlap (S3-2): "on exception" labels can overlap node text at some zooms (seen next to Resume). Candidate fixes: label offset along edge path, or hide labels below a zoom threshold.
+- ✅ **BL-019 (done 2026-07-22, backlog-quick-wins)** · SEC-004 message escaping (Sprint-2 review): UNC paths display as `\\\\fs01\\…` because messages JSON-stringify the value; render raw path in UI/report contexts.
+- ✅ **BL-020 (done 2026-07-22, backlog-quick-wins)** · Release-level view: landing page could show release-wide aggregates (worst grade, total findings by severity, estate effort sum from migration reports) above the owner cards. Raised implicitly by the "download all" review (2026-07-21); pairs naturally with S6's program dashboard — check overlap before building.
 
 ---
 

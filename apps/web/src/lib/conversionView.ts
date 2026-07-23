@@ -14,6 +14,7 @@ import type { GeneratedSelector } from '@prismshift/transformer';
 
 export interface StageMappingRow {
   pageName: string;
+  stageId: string;
   stageName: string;
   stageKind: Stage['kind'];
   /** What it became on the UiPath side. */
@@ -90,7 +91,7 @@ function uipathLabel(stage: Stage): string {
     case 'note':
       return 'ui:Comment';
     case 'alert':
-      return '— (alert stage pending)';
+      return 'ui:LogMessage (Info)';
     case 'write':
       return `ui:TypeInto ×${stage.steps.length}`;
     case 'read':
@@ -161,6 +162,7 @@ export function buildConversionView(
 
       rows.push({
         pageName: page.name,
+        stageId: stage.id,
         stageName: stage.name,
         stageKind: stage.kind,
         uipath: uipathLabel(stage),

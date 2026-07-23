@@ -161,7 +161,7 @@ export async function run(
   if (parsed.convertDir !== undefined) {
     for (const input of inputs) {
       const { model } = await parseBpRelease(input.xml);
-      const release = buildReleaseExport(model, { objects: parsed.objects });
+      const release = buildReleaseExport(model, {}, { objects: parsed.objects });
       const base = join(parsed.convertDir, basename(input.file).replace(/\.[^.]+$/, ''));
       for (const file of release.files) {
         const target = join(base, file.path);
