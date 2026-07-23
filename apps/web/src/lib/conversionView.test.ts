@@ -74,3 +74,14 @@ describe('buildConversionView (S5-6)', () => {
     expect(view.manualCount).toBeGreaterThan(0);
   });
 });
+
+describe('BL-011 · alert rows', () => {
+  it('alerts map to LogMessage and are no longer pending', async () => {
+    const { xml } = await loadSample('03-the-monolith');
+    const { model } = await parseBpRelease(xml);
+    const view = buildConversionView(model, model.processes[0]!, true);
+    const alertRow = view.rows.find((r) => r.stageName === 'Log Customer Detail')!;
+    expect(alertRow.uipath).toBe('ui:LogMessage (Info)');
+    expect(alertRow.uipath).not.toContain('pending');
+  });
+});
