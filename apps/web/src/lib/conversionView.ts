@@ -14,6 +14,7 @@ import type { GeneratedSelector } from '@prismshift/transformer';
 
 export interface StageMappingRow {
   pageName: string;
+  stageId: string;
   stageName: string;
   stageKind: Stage['kind'];
   /** What it became on the UiPath side. */
@@ -161,6 +162,7 @@ export function buildConversionView(
 
       rows.push({
         pageName: page.name,
+        stageId: stage.id,
         stageName: stage.name,
         stageKind: stage.kind,
         uipath: uipathLabel(stage),
