@@ -38,7 +38,7 @@ import {
   storeArtifact,
   type ArtifactRow,
 } from '../lib/artifacts';
-import { generateArtifactKey } from '../lib/artifactCrypto';
+import { generateArtifactKey, importArtifactKey } from '../lib/artifactCrypto';
 import {
   listAuditTrail,
   listProgramEdges,
@@ -100,7 +100,7 @@ export interface WorkspaceState {
   purgeActiveWorkspace: () => Promise<void>;
   refreshArtifacts: () => Promise<void>;
   generateArtifactKey: () => Promise<void>;
-  importArtifactKeyString: (keyBase64: string) => void;
+  importArtifactKeyString: (keyBase64: string) => Promise<void>;
   storeReleaseArtifact: () => Promise<void>;
   fetchArtifact: (artifactId: string) => Promise<{ name: string; plaintext: Uint8Array } | null>;
   deleteArtifact: (artifactId: string) => Promise<void>;
@@ -367,9 +367,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
         set({ artifactKey: key });
       }),
 
-    importArtifactKeyString: (keyBase64) => {
+    importArtifactKeyString: async (keyBase64) => {
       const active = get().activeWorkspaceId;
       if (active === null) return;
+      // Reject fakes at paste time — a wrong key must never show "Key loaded".
+      try {
+        await importArtifactKey(keyBase64);
+      } catch {
+        set({
+          error:
+            'That is not a valid artifact key (expected the 44-character base64 key from "Copy key for teammates"). Nothing was saved.',
+        });
+        return;
+      }
       artifactKeyStore.set(active, keyBase64.trim());
       set({ artifactKey: keyBase64.trim(), error: null });
     },

@@ -381,7 +381,7 @@ export function WorkspacePanel({ onClose }: { onClose: () => void }) {
                           placeholder="paste key (base64)"
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
-                              store.importArtifactKeyString((e.target as HTMLInputElement).value);
+                              void store.importArtifactKeyString((e.target as HTMLInputElement).value);
                             }
                           }}
                           className="w-64 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 placeholder:text-slate-600"
