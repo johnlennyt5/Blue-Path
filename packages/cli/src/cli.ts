@@ -18,6 +18,7 @@ Options:
   --fail-below <grade>   exit 1 if any component grades below A|B|C|D
   --max-critical <n>     exit 1 if any file has more than n critical findings
   --convert <dir>        also emit UiPath projects (one folder per process)
+  --objects <mode>       with --convert: embed (default) or library
   -h, --help             this text
 
 Examples:
@@ -31,11 +32,12 @@ interface ParsedArgs {
   failBelow?: string;
   maxCritical?: number;
   convertDir?: string;
+  objects: 'embed' | 'library';
 }
 
 export function parseArgs(argv: string[]): ParsedArgs | { error: string } {
   if (argv[0] !== 'analyze') return { error: argv[0] === '-h' || argv[0] === '--help' ? '' : `unknown command "${argv[0] ?? ''}"` };
-  const args: ParsedArgs = { files: [], json: false };
+  const args: ParsedArgs = { files: [], json: false, objects: 'embed' };
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--json') args.json = true;
@@ -45,6 +47,11 @@ export function parseArgs(argv: string[]): ParsedArgs | { error: string } {
       if (!Number.isInteger(n) || n < 0) return { error: '--max-critical expects a non-negative integer' };
       args.maxCritical = n;
     } else if (arg === '--convert') args.convertDir = argv[++i];
+    else if (arg === '--objects') {
+      const mode = argv[++i];
+      if (mode !== 'embed' && mode !== 'library') return { error: '--objects expects embed or library' };
+      args.objects = mode;
+    }
     else if (arg === '-h' || arg === '--help') return { error: '' };
     else if (arg.startsWith('--')) return { error: `unknown option "${arg}"` };
     else args.files.push(arg);
@@ -102,7 +109,7 @@ export async function run(
   if (parsed.convertDir !== undefined) {
     for (const input of inputs) {
       const { model } = await parseBpRelease(input.xml);
-      const release = buildReleaseExport(model);
+      const release = buildReleaseExport(model, {}, { objects: parsed.objects });
       const base = join(parsed.convertDir, basename(input.file).replace(/\.[^.]+$/, ''));
       for (const file of release.files) {
         const target = join(base, file.path);

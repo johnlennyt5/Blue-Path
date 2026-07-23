@@ -26,6 +26,7 @@ export default function App() {
   const [bundleNote, setBundleNote] = useState<string | null>(null);
   const codeSuggestions = useAiStore((s) => s.codeSuggestions);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  const [objectsAsLibraries, setObjectsAsLibraries] = useState(false);
 
   // Init at app load — the magic-link redirect carries the token in the URL
   // hash, and the client must exist right then to consume it (not only when
@@ -139,12 +140,16 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => {
-                    const release = buildReleaseExport(model, acceptedCodeOverrides(codeSuggestions));
+                    const release = buildReleaseExport(model, acceptedCodeOverrides(codeSuggestions), {
+                      objects: objectsAsLibraries ? 'library' : 'embed',
+                    });
                     void releaseZipBlob(release).then((blob) => {
                       const name = (model.meta.packageName || 'release').replace(/[^A-Za-z0-9_-]+/g, '_');
                       downloadBlob(blob, `${name}-UiPath-projects.zip`);
                       setBundleNote(
-                        `${release.exports.length} project(s) bundled — one folder per process, each self-contained with its objects, manifests, and migration report.`,
+                        objectsAsLibraries
+                          ? `${release.exports.length} project(s) + shared object libraries under Libraries/ — publish each library to your feed, then install per project (see punch lists).`
+                          : `${release.exports.length} project(s) bundled — one folder per process, each self-contained with its objects, manifests, and migration report.`,
                       );
                     });
                   }}
@@ -170,6 +175,15 @@ export default function App() {
                 >
                   ⬇ Audit report (PDF)
                 </button>
+                <label className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <input
+                    type="checkbox"
+                    checked={objectsAsLibraries}
+                    onChange={(e) => setObjectsAsLibraries(e.target.checked)}
+                    className="accent-violet-500"
+                  />
+                  shared objects as libraries
+                </label>
                 {bundleNote && <span className="text-xs text-slate-400">{bundleNote}</span>}
               </div>
             )}

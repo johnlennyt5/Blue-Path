@@ -13,6 +13,7 @@ export { generateObjectSelectors, generateSelector } from './selectors';
 export type { GeneratedSelector } from './selectors';
 export { bpTypeToXaml, sanitizeFileName, sanitizeIdentifier } from './naming';
 export {
+  buildLibraryProject,
   buildProject,
   buildProjectJson,
   decideProjectLayout,
