@@ -53,26 +53,46 @@ function referencedObjects(model: AutomationModel, process: ProcessNode): string
   return model.objects.filter((o) => names.has(o.name)).map((o) => o.name);
 }
 
-export function buildProcessExport(model: AutomationModel, process: ProcessNode): ProcessExport {
-  const conversion = convertProcess(model, process);
+export function buildProcessExport(
+  model: AutomationModel,
+  process: ProcessNode,
+  codeOverrides: Record<string, string> = {},
+): ProcessExport {
+  const conversion = convertProcess(model, process, { codeOverrides });
   const layout = decideProjectLayout({
     stageCount: conversion.totalStageCount,
     usesQueues: processUsesQueues(process),
   });
   const queueName = firstQueueName(process);
+  // BL-016: seed the REFramework Config from the release itself
+  const configEntries = [
+    ...(queueName !== undefined ? [{ key: 'OrchestratorQueueName', value: queueName }] : []),
+    ...model.environmentVars.map((envVar) => ({ key: envVar.name, value: envVar.value ?? '' })),
+    ...model.credentialsRefs.map((credential) => ({
+      key: `${credential.name}_CredentialAsset`,
+      value: credential.name,
+    })),
+  ];
   const project = buildProject({
     name: process.name,
     description: `Converted from Blue Prism "${process.name}" by PrismShift (coverage ${conversion.coveragePct}%).`,
     layout,
     ...(queueName !== undefined ? { queueName } : {}),
     workflows: conversion.workflows,
+    configEntries,
   });
+  if (layout === 'reframework') {
+    project.files.push({
+      path: 'Data/Config.json',
+      content: `${JSON.stringify(Object.fromEntries(configEntries.map((e) => [e.key, e.value])), null, 2)}\n`,
+    });
+  }
 
   // Referenced objects ship as Objects/<Object>/<Page>.xaml workflows
   const objectNames = referencedObjects(model, process);
   const objectConversions = model.objects
     .filter((o) => objectNames.includes(o.name))
-    .map((o) => convertObject(model, o));
+    .map((o) => convertObject(model, o, { codeOverrides }));
   for (const objectConversion of objectConversions) {
     for (const workflow of objectConversion.workflows) {
       project.files.push({
@@ -103,8 +123,13 @@ export interface ReleaseExport {
  * top-level folder (UiPath projects have exactly one entry process each —
  * a multi-process release cannot be a single project.json).
  */
-export function buildReleaseExport(model: AutomationModel): ReleaseExport {
-  const exports = model.processes.map((process) => buildProcessExport(model, process));
+export function buildReleaseExport(
+  model: AutomationModel,
+  codeOverrides: Record<string, string> = {},
+): ReleaseExport {
+  const exports = model.processes.map((process) =>
+    buildProcessExport(model, process, codeOverrides),
+  );
   const files = exports.flatMap((processExport) => {
     const folder = processExport.project.name.replace(/[^A-Za-z0-9_-]+/g, '_');
     return processExport.project.files.map((file) => ({

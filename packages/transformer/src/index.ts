@@ -7,7 +7,7 @@ export const PACKAGE_NAME = '@prismshift/transformer';
 export { translateBpExpression } from './bpExpression';
 export type { TranslateOptions, TranslationResult } from './bpExpression';
 export { convertObject, convertProcess } from './convert';
-export type { ConversionIssue, ObjectConversion, ProcessConversion } from './convert';
+export type { ConversionIssue, ConvertOptions, ObjectConversion, ProcessConversion } from './convert';
 export { buildManifests } from './manifests';
 export { generateObjectSelectors, generateSelector } from './selectors';
 export type { GeneratedSelector } from './selectors';

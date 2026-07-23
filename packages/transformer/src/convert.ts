@@ -20,6 +20,7 @@ import type {
   ProcessNode,
   Stage,
 } from '@prismshift/ir';
+import { SENSITIVE_NAME } from '@prismshift/rules';
 import { translateBpExpression } from './bpExpression';
 import { generateObjectSelectors } from './selectors';
 import type { GeneratedSelector } from './selectors';
@@ -254,6 +255,8 @@ interface ConvertContext {
   punch: ConversionIssue[];
   converted: Set<string>;
   visited: Set<string>;
+  /** BL-005: user-accepted AI code translations by stage id. */
+  codeOverrides: Record<string, string>;
 }
 
 const TRANSACTION_ITEM = 'TransactionItem';
@@ -819,20 +822,9 @@ function emitChain(
       }
 
       case 'wait': {
-        const condition = stage.conditions[0];
-        if (stage.conditions.length > 1) {
-          issue(ctx, stage, 'Additional wait conditions dropped — only the first is converted');
-        }
-        const generated =
-          condition?.elementId !== undefined
-            ? selectorFor(ctx, stage, condition.elementId)
-            : undefined;
-        if (condition?.elementId !== undefined && generated?.selector === undefined) {
-          // selectorFor already flagged it
-        }
-        const resultVar = `Exists_${sanitizeIdentifier(stage.name)}`;
-        ctx.extraVariables.set(resultVar, { name: resultVar, type: 'Boolean' });
-
+        // BL-015: EVERY condition converts — one UiElementExists per element,
+        // Or-combined into the decision (BP waits proceed on ANY condition).
+        const conditions = stage.conditions.length > 0 ? stage.conditions : [undefined];
         let timeoutMs: number;
         if (stage.timeoutSeconds !== undefined && stage.timeoutSeconds > 0) {
           timeoutMs = stage.timeoutSeconds * 1000;
@@ -841,13 +833,28 @@ function emitChain(
           issue(ctx, stage, 'Wait had no timeout in the source — defaulted to 30s (REL-003)');
         }
 
-        activities.push({
-          kind: 'elementExists',
-          displayName: stage.name,
-          selector: generated?.selector ?? '',
-          storeIn: resultVar,
-          timeoutMs,
-        });
+        const resultVars: string[] = [];
+        for (const [conditionIndex, waitCondition] of conditions.entries()) {
+          const generated =
+            waitCondition?.elementId !== undefined
+              ? selectorFor(ctx, stage, waitCondition.elementId)
+              : undefined;
+          const suffix = conditions.length > 1 ? `_${conditionIndex + 1}` : '';
+          const conditionVar = `Exists_${sanitizeIdentifier(stage.name)}${suffix}`;
+          ctx.extraVariables.set(conditionVar, { name: conditionVar, type: 'Boolean' });
+          resultVars.push(conditionVar);
+          activities.push({
+            kind: 'elementExists',
+            displayName:
+              conditions.length > 1
+                ? `${stage.name} (condition ${conditionIndex + 1})`
+                : stage.name,
+            selector: generated?.selector ?? '',
+            storeIn: conditionVar,
+            timeoutMs,
+          });
+        }
+        const resultVar = resultVars.join(' Or ');
 
         const branches = ctx.maps.choiceTargets.get(current) ?? [];
         const timeoutBranch = branches.find((b) => b.label === 'Time Out');
@@ -872,7 +879,7 @@ function emitChain(
       }
 
       case 'code': {
-        if (stage.language === 'jscript') {
+        if (stage.language === 'jscript' && ctx.codeOverrides[stage.id] === undefined) {
           activities.push({
             kind: 'comment',
             text: `PrismShift: JScript code stage "${stage.name}" cannot map to InvokeCode — port manually.`,
@@ -881,11 +888,19 @@ function emitChain(
           current = ctx.maps.nextFlow.get(current);
           break;
         }
+        const override = ctx.codeOverrides[stage.id];
+        if (override !== undefined) {
+          issue(
+            ctx,
+            stage,
+            'Code translated by an AI suggestion the user accepted — review the translation before go-live',
+          );
+        }
         activities.push({
           kind: 'invokeCode',
           displayName: stage.name,
-          language: stage.language === 'csharp' ? 'CSharp' : 'VBNet',
-          code: stage.body.trim(),
+          language: override !== undefined ? 'VBNet' : stage.language === 'csharp' ? 'CSharp' : 'VBNet',
+          code: override !== undefined ? override.trim() : stage.body.trim(),
           arguments: [
             ...stage.inputs.map((input) => ({
               name: sanitizeIdentifier(input.paramName),
@@ -944,6 +959,28 @@ function emitChain(
         current = ctx.maps.nextFlow.get(current);
         break;
 
+      case 'alert': {
+        // BL-011: BP alerts are operator notifications → Orchestrator log
+        // lines. If the message references a sensitive item (SEC-003 territory)
+        // the log activity carries the warning inline so nobody ships PII
+        // logging by accident.
+        if (SENSITIVE_NAME.test(stage.message.raw)) {
+          activities.push({
+            kind: 'comment',
+            text: `PrismShift SEC-003: this alert message references sensitive data — review before logging (see the Vulnerabilities tab).`,
+          });
+          issue(ctx, stage, 'Alert message references sensitive data (SEC-003) — review the log line');
+        }
+        activities.push({
+          kind: 'logMessage',
+          displayName: stage.name,
+          level: 'Info',
+          message: translate(ctx, stage, stage.message.raw),
+        });
+        current = ctx.maps.nextFlow.get(current);
+        break;
+      }
+
       default:
         activities.push({
           kind: 'comment',
@@ -971,6 +1008,7 @@ function convertPage(
   selectors: Map<string, GeneratedSelector>,
   objectRoutes: Map<string, { file: string; signature: PageSignature }>,
   punch: ConversionIssue[],
+  codeOverrides: Record<string, string> = {},
 ): { doc: WorkflowDoc; converted: Set<string> } {
   const maps = buildMaps(page);
   const converted = new Set<string>();
@@ -989,6 +1027,7 @@ function convertPage(
     punch,
     converted,
     visited: new Set(),
+    codeOverrides,
   };
 
   // Data/Collection stages count as converted: they became variables/args
@@ -1051,7 +1090,20 @@ function convertPage(
 // Process → conversion
 // ---------------------------------------------------------------------------
 
-export function convertProcess(model: AutomationModel, process: ProcessNode): ProcessConversion {
+export interface ConvertOptions {
+  /**
+   * BL-005: user-ACCEPTED AI code translations, keyed by stage id. Never
+   * auto-applied — the web UI only fills this after an explicit accept, and
+   * every applied override is punch-listed in the migration report.
+   */
+  codeOverrides?: Record<string, string>;
+}
+
+export function convertProcess(
+  model: AutomationModel,
+  process: ProcessNode,
+  options: ConvertOptions = {},
+): ProcessConversion {
   const punch: ConversionIssue[] = [];
   const workflows: { path: string; doc: WorkflowDoc }[] = [];
   const convertedIds = new Set<string>();
@@ -1086,6 +1138,7 @@ export function convertProcess(model: AutomationModel, process: ProcessNode): Pr
       new Map(),
       objectRoutes,
       punch,
+      options.codeOverrides ?? {},
     );
     for (const id of result.converted) convertedIds.add(id);
     workflows.push({ path, doc: result.doc });
@@ -1125,6 +1178,7 @@ export interface ObjectConversion {
 export function convertObject(
   _model: AutomationModel,
   object: BusinessObjectNode,
+  options: ConvertOptions = {},
 ): ObjectConversion {
   const punch: ConversionIssue[] = [];
   const workflows: { path: string; doc: WorkflowDoc }[] = [];
@@ -1149,6 +1203,7 @@ export function convertObject(
       selectorMap,
       new Map(),
       punch,
+      options.codeOverrides ?? {},
     );
     for (const id of result.converted) convertedIds.add(id);
     workflows.push({ path, doc: result.doc });

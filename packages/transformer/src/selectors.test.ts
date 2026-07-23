@@ -109,3 +109,30 @@ describe('S5-4 · object conversion (corpus #2 VBO)', () => {
     expect(conversion.selectors).toHaveLength(4);
   });
 });
+
+describe('BL-015 · multi-condition waits', () => {
+  it('single-condition corpus wait is unchanged and dropped-conditions flag is gone', async () => {
+    const { xml } = await loadSample('02-realistic-mid-size');
+    const { model } = await parseBpRelease(xml);
+    const conversion = convertObject(model, model.objects[0]!);
+    expect(
+      conversion.punchList.some((p) => p.reason.includes('Additional wait conditions dropped')),
+    ).toBe(false);
+    const xamlOut = conversion.workflows.map((w) => emitWorkflowXaml(w.doc)).join('');
+    expect(xamlOut).toContain('Name="Exists_Wait_For_Confirmation"');
+  });
+
+  it('a two-condition wait emits two UiElementExists Or-combined', async () => {
+    const { xml } = await loadSample('02-realistic-mid-size');
+    const { model } = await parseBpRelease(xml);
+    const vbo = structuredClone(model.objects[0]!);
+    const wait = vbo.pages.flatMap((p) => p.stages).find((s) => s.kind === 'wait')!;
+    if (wait.kind !== 'wait') return;
+    wait.conditions = [...wait.conditions, ...wait.conditions];
+    const conversion = convertObject(model, vbo);
+    const xamlOut = conversion.workflows.map((w) => emitWorkflowXaml(w.doc)).join('');
+    expect(xamlOut).toContain('Exists_Wait_For_Confirmation_1');
+    expect(xamlOut).toContain('Exists_Wait_For_Confirmation_2');
+    expect(xamlOut).toContain('Exists_Wait_For_Confirmation_1 Or Exists_Wait_For_Confirmation_2');
+  });
+});
