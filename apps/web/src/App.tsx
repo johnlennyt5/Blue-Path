@@ -7,6 +7,7 @@ import { buildReleaseExport, downloadBlob, releaseZipBlob } from './lib/exportPr
 import { formatBytes } from './lib/fileIntake';
 import { DropZone } from './components/DropZone';
 import { OwnerCards } from './components/OwnerCards';
+import { ReleaseRollup } from './components/ReleaseRollup';
 import { OwnerDetail } from './components/OwnerDetail';
 import { MigrationTracker } from './components/MigrationTracker';
 import { WorkspacePanel } from './components/WorkspacePanel';
@@ -172,6 +173,7 @@ export default function App() {
                 {bundleNote && <span className="text-xs text-slate-400">{bundleNote}</span>}
               </div>
             )}
+            {model && !selection && <ReleaseRollup model={model} findings={findings} />}
             {model && !selection && <OwnerCards model={model} findings={findings} />}
             {model && selection && <OwnerDetail model={model} findings={findings} />}
           </section>

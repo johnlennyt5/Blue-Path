@@ -113,6 +113,43 @@ describe('WorkspacePanel role gates', () => {
     expect((screen.getByLabelText('Audit retention days') as HTMLInputElement).disabled).toBe(true);
   });
 
+  it('artifact vault (BL-001): hidden when flag off; key warning when on; vault when key loaded', () => {
+    seedStore('admin'); // artifactStorageEnabled: false in the seed
+    render(<WorkspacePanel onClose={() => {}} />);
+    expect(screen.queryByText('Encrypted artifact vault')).toBeNull();
+    cleanup();
+
+    seedStore('admin');
+    useWorkspaceStore.setState({
+      workspaces: [
+        { id: 'ws1', name: 'Estate', role: 'admin', artifactStorageEnabled: true, retentionDays: null },
+      ],
+      artifactKey: null,
+      artifacts: [],
+    });
+    render(<WorkspacePanel onClose={() => {}} />);
+    expect(screen.getByText('Encrypted artifact vault')).toBeTruthy();
+    expect(screen.getByText(/Losing the key loses the/)).toBeTruthy();
+    expect(screen.getByText('Generate key')).toBeTruthy();
+    cleanup();
+
+    seedStore('admin');
+    useWorkspaceStore.setState({
+      workspaces: [
+        { id: 'ws1', name: 'Estate', role: 'admin', artifactStorageEnabled: true, retentionDays: null },
+      ],
+      artifactKey: 'a'.repeat(44),
+      artifacts: [
+        { id: 'art1', name: 'estate.bprelease', kind: 'bprelease', sizeBytes: 2048, uploadedAt: '2026-07-22T00:00:00Z' },
+      ],
+    });
+    render(<WorkspacePanel onClose={() => {}} />);
+    expect(screen.getByText(/Store loaded release/)).toBeTruthy();
+    expect(screen.getByText('estate.bprelease')).toBeTruthy();
+    expect(screen.getByText('decrypt & download')).toBeTruthy();
+    expect(screen.getByText(/Key loss = artifact loss/)).toBeTruthy();
+  });
+
   it('viewer: same read-only roster, viewer badge shown', () => {
     seedStore('viewer');
     render(<WorkspacePanel onClose={() => {}} />);

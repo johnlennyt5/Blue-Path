@@ -20,6 +20,7 @@ import type {
   ProcessNode,
   Stage,
 } from '@prismshift/ir';
+import { SENSITIVE_NAME } from '@prismshift/rules';
 import { translateBpExpression } from './bpExpression';
 import { generateObjectSelectors } from './selectors';
 import type { GeneratedSelector } from './selectors';
@@ -953,6 +954,28 @@ function emitChain(
         }
         current = ctx.maps.nextFlow.get(current);
         break;
+
+      case 'alert': {
+        // BL-011: BP alerts are operator notifications → Orchestrator log
+        // lines. If the message references a sensitive item (SEC-003 territory)
+        // the log activity carries the warning inline so nobody ships PII
+        // logging by accident.
+        if (SENSITIVE_NAME.test(stage.message.raw)) {
+          activities.push({
+            kind: 'comment',
+            text: `PrismShift SEC-003: this alert message references sensitive data — review before logging (see the Vulnerabilities tab).`,
+          });
+          issue(ctx, stage, 'Alert message references sensitive data (SEC-003) — review the log line');
+        }
+        activities.push({
+          kind: 'logMessage',
+          displayName: stage.name,
+          level: 'Info',
+          message: translate(ctx, stage, stage.message.raw),
+        });
+        current = ctx.maps.nextFlow.get(current);
+        break;
+      }
 
       default:
         activities.push({

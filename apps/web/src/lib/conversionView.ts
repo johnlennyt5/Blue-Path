@@ -91,7 +91,7 @@ function uipathLabel(stage: Stage): string {
     case 'note':
       return 'ui:Comment';
     case 'alert':
-      return '— (alert stage pending)';
+      return 'ui:LogMessage (Info)';
     case 'write':
       return `ui:TypeInto ×${stage.steps.length}`;
     case 'read':
