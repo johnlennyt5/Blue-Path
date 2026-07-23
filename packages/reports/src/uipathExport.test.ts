@@ -68,7 +68,7 @@ describe('process export delivery modes', () => {
     expect(projectJson.dependencies['Invoice_Entry_VBO']).toBeUndefined();
   });
 
-  it('library: no copies, dependency entry, per-object punch instructions', async () => {
+  it('library: no copies, dotted package dependency, per-object punch instructions', async () => {
     const model = await sample2();
     const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
     const { project, conversion } = buildProcessExport(model, performer, {}, 'library');
@@ -77,11 +77,46 @@ describe('process export delivery modes', () => {
     const projectJson = JSON.parse(
       project.files.find((f) => f.path === 'project.json')!.content,
     ) as { dependencies: Record<string, string> };
-    expect(projectJson.dependencies['Invoice_Entry_VBO']).toBe('[1.0.0]');
+    // Package id verified against a real Studio publish: dots, not underscores.
+    expect(projectJson.dependencies['Invoice.Entry.VBO']).toBe('[1.0.0]');
+    expect(projectJson.dependencies['Invoice_Entry_VBO']).toBeUndefined();
 
     const punch = conversion.punchList.find((p) => p.reason.includes('Library mode'));
     expect(punch).toBeDefined();
-    expect(punch!.reason).toContain('Invoice_Entry_VBO');
+    expect(punch!.reason).toContain('Invoice.Entry.VBO');
+    // The swap is no longer manual — the punch asks for install, not rewiring.
+    expect(punch!.reason).not.toContain('replace each InvokeWorkflowFile');
+  });
+
+  it('library (BL-008 residual): object calls are wired as compiled library activities', async () => {
+    const model = await sample2();
+    const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const dispatcher = model.processes.find((p) => p.name === 'Invoice Dispatcher')!;
+
+    // Performer: Process Item's Enter Invoice call becomes <lib0:Enter_Invoice …/>
+    const { project } = buildProcessExport(model, performer, {}, 'library');
+    const pageXaml = project.files.find((f) => f.path === 'Pages/Process_Item.xaml')!.content;
+    expect(pageXaml).toContain(
+      'xmlns:lib0="clr-namespace:Invoice_Entry_VBO;assembly=Invoice Entry VBO"',
+    );
+    expect(pageXaml).toContain('<lib0:Enter_Invoice DisplayName="Enter Invoice"');
+    expect(pageXaml).toContain('in_Invoice_Ref="[');
+    expect(pageXaml).not.toContain('WorkflowFileName="Objects\\');
+
+    // Dispatcher: the out-argument binds as a plain attribute too. (REFramework
+    // emits scaffold + converted page both at Main.xaml pre-BL-014 — take the
+    // converted one, pushed last.)
+    const { project: dispatcherProject } = buildProcessExport(model, dispatcher, {}, 'library');
+    const mainXaml = dispatcherProject.files.filter((f) => f.path === 'Main.xaml').at(-1)!.content;
+    expect(mainXaml).toContain('<lib0:Get_Pending_Invoices');
+    expect(mainXaml).toContain('out_Invoices="[');
+    expect(mainXaml).not.toContain('WorkflowFileName="Objects\\');
+
+    // Embed mode still uses InvokeWorkflowFile (regression)
+    const { project: embedProject } = buildProcessExport(model, performer);
+    const embedXaml = embedProject.files.find((f) => f.path === 'Pages/Process_Item.xaml')!.content;
+    expect(embedXaml).toContain('WorkflowFileName="Objects\\Invoice_Entry_VBO\\Enter_Invoice.xaml"');
+    expect(embedXaml).not.toContain('<lib0:');
   });
 });
 

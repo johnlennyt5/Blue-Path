@@ -59,6 +59,47 @@ function referencedObjects(model: AutomationModel, process: ProcessNode): string
 
 export type ObjectDelivery = 'embed' | 'library';
 
+/**
+ * The NuGet package id Studio mints on publish: the project name with
+ * non-alphanumeric runs replaced by dots ("Invoice Entry VBO" →
+ * "Invoice.Entry.VBO"). Verified against a real published .nupkg.
+ */
+export function libraryPackageId(name: string): string {
+  return name
+    .trim()
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .join('.');
+}
+
+/**
+ * BL-008 residual: replace every `InvokeWorkflowFile Objects\<Obj>\<Page>.xaml`
+ * in the tree with the compiled library activity it becomes once the library
+ * package is installed. Mutates nodes in place (generic walk — container
+ * shapes don't matter).
+ */
+function rewireLibraryInvokes(node: unknown, rawNameByDir: Map<string, string>): void {
+  if (Array.isArray(node)) {
+    for (const item of node) rewireLibraryInvokes(item, rawNameByDir);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const record = node as Record<string, unknown>;
+  if (record['kind'] === 'invokeWorkflow' && typeof record['workflowFile'] === 'string') {
+    const match = /^Objects\\([^\\]+)\\([^\\]+)\.xaml$/.exec(record['workflowFile']);
+    if (match !== null) {
+      const dir = match[1]!;
+      record['kind'] = 'libraryActivity';
+      record['clrNamespace'] = dir;
+      record['assembly'] = rawNameByDir.get(dir) ?? dir;
+      record['activityClass'] = match[2]!;
+      delete record['workflowFile'];
+      return;
+    }
+  }
+  for (const value of Object.values(record)) rewireLibraryInvokes(value, rawNameByDir);
+}
+
 export function buildProcessExport(
   model: AutomationModel,
   process: ProcessNode,
@@ -72,6 +113,18 @@ export function buildProcessExport(
   });
   const queueName = firstQueueName(process);
   const objectNames = referencedObjects(model, process);
+
+  // BL-008 residual: in library mode, rewire InvokeWorkflowFile calls into
+  // Objects\… as compiled library activities BEFORE the workflows are emitted.
+  // Shape verified against a Studio-published .nupkg (assembly metadata):
+  // namespace/class = sanitized object/page names; every workflow argument is
+  // a same-named activity property; the package id dots the object name.
+  if (objectDelivery === 'library') {
+    const rawNameByDir = new Map(model.objects.map((o) => [sanitizeFileName(o.name), o.name]));
+    for (const workflow of conversion.workflows) {
+      rewireLibraryInvokes(workflow.doc.body, rawNameByDir);
+    }
+  }
   // BL-016: seed the REFramework Config from the release itself
   const configEntries = [
     ...(queueName !== undefined ? [{ key: 'OrchestratorQueueName', value: queueName }] : []),
@@ -111,17 +164,16 @@ export function buildProcessExport(
       }
     }
   } else {
-    // BL-008 library mode: no copies — reference the exported libraries as
-    // dependencies. Studio compiles library workflows into activities, so
-    // each InvokeWorkflowFile into Objects\… needs a one-time manual swap
-    // after the library is installed (punch-listed per object; automatic
-    // rewiring awaits library-activity XAML ground truth).
+    // BL-008 library mode: no copies — object calls are wired as compiled
+    // library activities (rewired above) and the packages become project
+    // dependencies. Package ids verified against a Studio publish: the
+    // project name with non-alphanumeric runs replaced by dots.
     const projectJsonFile = project.files.find((f) => f.path === 'project.json')!;
     const projectJson = JSON.parse(projectJsonFile.content) as {
       dependencies: Record<string, string>;
     };
     for (const name of objectNames) {
-      projectJson.dependencies[sanitizeFileName(name)] = '[1.0.0]';
+      projectJson.dependencies[libraryPackageId(name)] = '[1.0.0]';
     }
     projectJsonFile.content = `${JSON.stringify(projectJson, null, 2)}\n`;
     for (const name of objectNames) {
@@ -129,7 +181,7 @@ export function buildProcessExport(
         pageName: '(project)',
         stageName: name,
         stageKind: 'action',
-        reason: `Library mode: install library "${sanitizeFileName(name)}" (1.0.0) from your feed, then replace each InvokeWorkflowFile into Objects\\${sanitizeFileName(name)}\\… with the corresponding library activity.`,
+        reason: `Library mode: object calls are wired as compiled "${sanitizeFileName(name)}" activities — publish Libraries/${sanitizeFileName(name)} to your feed and install package "${libraryPackageId(name)}" (adjust the [1.0.0] pin if your feed holds a different version) before opening this project.`,
         sourceRef: 'project.json/dependencies',
       });
     }

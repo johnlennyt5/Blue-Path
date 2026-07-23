@@ -77,6 +77,23 @@ export type XActivity =
       workflowFile: string;
       arguments: InvokeArgumentBinding[];
     }
+  | {
+      /**
+       * BL-008 residual: a compiled library activity call. Shape verified
+       * against a Studio-published .nupkg (assembly metadata via dnfile):
+       * class = sanitized workflow name in namespace = sanitized library
+       * project name; every workflow argument becomes a same-named property.
+       */
+      kind: 'libraryActivity';
+      displayName?: string;
+      /** CLR namespace inside the compiled assembly (sanitized object name). */
+      clrNamespace: string;
+      /** Assembly name — the library project's raw name, spaces preserved. */
+      assembly: string;
+      /** Activity class name (sanitized workflow/page name). */
+      activityClass: string;
+      arguments: InvokeArgumentBinding[];
+    }
   | { kind: 'writeLine'; displayName?: string; text: string }
   | {
       kind: 'logMessage';
@@ -339,6 +356,19 @@ function emitActivity(w: Writer, activity: XActivity): void {
       );
       return;
 
+    case 'libraryActivity': {
+      // Compiled library activities take their arguments as plain attributes
+      // (each workflow argument compiled into a same-named activity property).
+      const prefix = libraryPrefix(activity.clrNamespace, activity.assembly);
+      const args = activity.arguments
+        .map((arg) => ` ${arg.name}="${expr(arg.expression)}"`)
+        .join('');
+      w.line(
+        `<${prefix}:${activity.activityClass}${displayAttr(activity.displayName, activity.activityClass)}${args} />`,
+      );
+      return;
+    }
+
     case 'writeLine':
       w.line(
         `<WriteLine${displayAttr(activity.displayName, 'Write Line')} Text="${expr(activity.text)}" />`,
@@ -505,12 +535,45 @@ function emitActivity(w: Writer, activity: XActivity): void {
 }
 
 /** Emits a complete UiPath workflow .xaml document (CRLF, UTF-8 text). */
+/**
+ * BL-008 residual: prefixes for library-activity clr-namespaces, computed per
+ * document by emitWorkflowXaml (the emitter is synchronous, so a module-level
+ * map keyed per emission is safe).
+ */
+let LIBRARY_PREFIXES = new Map<string, string>();
+
+function libraryPrefix(clrNamespace: string, assembly: string): string {
+  return LIBRARY_PREFIXES.get(`${clrNamespace};${assembly}`) ?? 'lib0';
+}
+
+/** Generic tree walk — finds libraryActivity nodes in any container shape. */
+function collectLibraryNamespaces(node: unknown, found: Map<string, string>): void {
+  if (Array.isArray(node)) {
+    for (const item of node) collectLibraryNamespaces(item, found);
+    return;
+  }
+  if (node === null || typeof node !== 'object') return;
+  const record = node as Record<string, unknown>;
+  if (record['kind'] === 'libraryActivity') {
+    const key = `${String(record['clrNamespace'])};${String(record['assembly'])}`;
+    if (!found.has(key)) found.set(key, `lib${found.size}`);
+  }
+  for (const value of Object.values(record)) collectLibraryNamespaces(value, found);
+}
+
 export function emitWorkflowXaml(doc: WorkflowDoc): string {
+  const libraryNamespaces = new Map<string, string>();
+  collectLibraryNamespaces(doc.body, libraryNamespaces);
+  LIBRARY_PREFIXES = libraryNamespaces;
+
   const w = new Writer();
   w.line('<?xml version="1.0" encoding="utf-8"?>');
   w.block(
     [
       `<Activity mc:Ignorable="sap sap2010" x:Class="${escapeXml(doc.className)}"`,
+      ...[...libraryNamespaces.entries()].map(
+        ([key, prefix]) => ` xmlns:${prefix}="clr-namespace:${escapeXml(key.slice(0, key.indexOf(';')))};assembly=${escapeXml(key.slice(key.indexOf(';') + 1))}"`,
+      ),
       ' xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"',
       ' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"',
       ' xmlns:s="clr-namespace:System;assembly=mscorlib"',
