@@ -254,6 +254,14 @@ interface ConvertContext {
    * TransactionItem.SpecificContent instead of DataTable access.
    */
   queueItemCollections: Map<string, Map<string, string>>;
+  /**
+   * BL-013: the identifier holding the queue item in this page —
+   * `TransactionItem` (local, page ran Get Next Item) or `io_TransactionItem`
+   * (received as an InOut argument from the caller).
+   */
+  transactionItemVar: string;
+  /** BL-013: true when this page receives the item via io_TransactionItem. */
+  receivesTransactionItem: boolean;
   /** True while emitting the recovery chain (Rethrow is only legal there). */
   inRecovery: boolean;
   /** Variables added during conversion (e.g. TransactionItem). */
@@ -266,8 +274,11 @@ interface ConvertContext {
 }
 
 const TRANSACTION_ITEM = 'TransactionItem';
+export const TRANSACTION_ITEM_ARG = 'io_TransactionItem';
 
 function ensureTransactionItemVariable(ctx: ConvertContext): void {
+  // Pages that receive the item as io_TransactionItem need no local variable.
+  if (ctx.receivesTransactionItem) return;
   if (!ctx.extraVariables.has(TRANSACTION_ITEM)) {
     ctx.extraVariables.set(TRANSACTION_ITEM, { name: TRANSACTION_ITEM, type: 'QueueItem' });
   }
@@ -393,15 +404,9 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
       kind: 'setTransactionStatus',
       displayName: stage.name,
       status: 'Successful',
-      transactionItem: TRANSACTION_ITEM,
+      transactionItem: ctx.transactionItemVar,
     });
-    if (!ctx.pageHasGetTransaction) {
-      issue(
-        ctx,
-        stage,
-        `SetTransactionStatus needs the ${TRANSACTION_ITEM} from Get Transaction Item — pass it into this page or restructure`,
-      );
-    }
+    noteTransactionItemSource(ctx, stage);
     return activities;
   }
 
@@ -413,16 +418,10 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
       displayName: stage.name,
       status: 'Failed',
       errorType: 'Application',
-      transactionItem: TRANSACTION_ITEM,
+      transactionItem: ctx.transactionItemVar,
       ...(reasonInput ? { reason: translate(ctx, stage, reasonInput.expression.raw) } : {}),
     });
-    if (!ctx.pageHasGetTransaction) {
-      issue(
-        ctx,
-        stage,
-        `SetTransactionStatus needs the ${TRANSACTION_ITEM} from Get Transaction Item — pass it into this page or restructure`,
-      );
-    }
+    noteTransactionItemSource(ctx, stage);
     return activities;
   }
 
@@ -433,6 +432,28 @@ function mapQueueAction(ctx: ConvertContext, stage: ActionStage): XActivity[] {
       text: `PrismShift TODO: queue action "${stage.actionName}" ("${stage.name}") not yet converted.`,
     },
   ];
+}
+
+/**
+ * BL-013: where does this page's TransactionItem come from? Local Get Next
+ * Item needs no note; a received io_TransactionItem gets a review note; a
+ * page with neither keeps the honest restructure flag.
+ */
+function noteTransactionItemSource(ctx: ConvertContext, stage: Stage): void {
+  if (ctx.pageHasGetTransaction) return;
+  if (ctx.receivesTransactionItem) {
+    issue(
+      ctx,
+      stage,
+      `${stage.name} uses the ${TRANSACTION_ITEM_ARG} passed in by the caller — verify every call site binds it`,
+    );
+    return;
+  }
+  issue(
+    ctx,
+    stage,
+    `SetTransactionStatus needs the ${TRANSACTION_ITEM} from Get Transaction Item — pass it into this page or restructure`,
+  );
 }
 
 function issue(ctx: ConvertContext, stage: Stage, reason: string): void {
@@ -459,7 +480,7 @@ function translate(ctx: ConvertContext, stage: Stage, raw: string): string {
     resolveRef: (name) => identifierFor(ctx, name),
     ...(loop ? { loop } : {}),
     ...(ctx.queueItemCollections.size > 0
-      ? { queueCollections: ctx.queueItemCollections }
+      ? { queueCollections: ctx.queueItemCollections, transactionItemVar: ctx.transactionItemVar }
       : {}),
   });
   for (const reason of issues) issue(ctx, stage, reason);
@@ -531,6 +552,17 @@ function bindInvokeArguments(
       direction: calleeArg?.direction === 'inout' ? 'inout' : 'out',
       type: calleeArg?.type ?? typeFor(ctx, identifierFor(ctx, output.storeIn) ?? ''),
       expression: identifierFor(ctx, output.storeIn) ?? sanitizeIdentifier(output.storeIn),
+    });
+  }
+
+  // BL-013: callee expects the queue item — bind our own item through.
+  if (target?.args.some((arg) => arg.name === TRANSACTION_ITEM_ARG)) {
+    ensureTransactionItemVariable(ctx);
+    bindings.push({
+      name: TRANSACTION_ITEM_ARG,
+      direction: 'inout',
+      type: 'QueueItem',
+      expression: ctx.transactionItemVar,
     });
   }
 
@@ -1028,6 +1060,14 @@ function emitChain(
 // Page → workflow document
 // ---------------------------------------------------------------------------
 
+/** BL-013: cross-page queue-item context computed by convertProcess's pre-pass. */
+interface CrossPageQueueContext {
+  /** This page receives the item via the io_TransactionItem argument. */
+  receivesTransactionItem: boolean;
+  /** Callee param name → queue collection fields fed in by a caller. */
+  queueParams: Map<string, Map<string, string>>;
+}
+
 function convertPage(
   owner: { dataItems: DataItem[] },
   page: Page,
@@ -1038,6 +1078,7 @@ function convertPage(
   objectRoutes: Map<string, { file: string; signature: PageSignature }>,
   punch: ConversionIssue[],
   codeOverrides: Record<string, string> = {},
+  crossPage: CrossPageQueueContext = { receivesTransactionItem: false, queueParams: new Map() },
 ): { doc: WorkflowDoc; converted: Set<string> } {
   const maps = buildMaps(page);
   const converted = new Set<string>();
@@ -1048,6 +1089,8 @@ function convertPage(
     signaturesByPageName,
     loopStack: [],
     queueItemCollections: new Map(),
+    transactionItemVar: crossPage.receivesTransactionItem ? TRANSACTION_ITEM_ARG : TRANSACTION_ITEM,
+    receivesTransactionItem: crossPage.receivesTransactionItem,
     itemsByName: new Map(owner.dataItems.map((d) => [d.name, d])),
     selectors,
     objectRoutes,
@@ -1059,6 +1102,16 @@ function convertPage(
     visited: new Set(),
     codeOverrides,
   };
+
+  // BL-013: Start params fed a queue collection by a caller — field reads on
+  // the receiving collection rewrite to SpecificContent on io_TransactionItem.
+  if (crossPage.queueParams.size > 0) {
+    const startBindings = page.stages.find((s) => s.kind === 'start');
+    for (const binding of (startBindings?.kind === 'start' ? startBindings.inputs : []) ?? []) {
+      const fields = crossPage.queueParams.get(binding.paramName);
+      if (fields !== undefined) ctx.queueItemCollections.set(binding.storeIn, fields);
+    }
+  }
 
   // Data/Collection stages count as converted: they became variables/args
   for (const stage of page.stages) {
@@ -1154,6 +1207,80 @@ export function convertProcess(
   const signatures = process.pages.map((page) => buildPageSignature(process, page));
   const signaturesByPageName = new Map(process.pages.map((page, i) => [page.name, signatures[i]!]));
 
+  // BL-013 pre-pass: which pages must receive the TransactionItem?
+  const isQueueStage = (s: Stage): s is ActionStage =>
+    s.kind === 'action' && (s.queueName !== undefined || s.objectName === 'Work Queues');
+  const pageHasGetNext = (page: Page): boolean =>
+    page.stages.some((s) => isQueueStage(s) && /get next/.test(s.actionName.toLowerCase()));
+  const usesItemStatus = (page: Page): boolean =>
+    page.stages.some(
+      (s) => isQueueStage(s) && /mark completed|complete|mark exception|exception/.test(s.actionName.toLowerCase()),
+    );
+
+  // a) queue collections produced per page (Get Next outputs with field defs)
+  const queueCollectionsByPage = new Map<string, Map<string, Map<string, string>>>();
+  for (const page of process.pages) {
+    const collections = new Map<string, Map<string, string>>();
+    for (const stage of page.stages) {
+      if (!isQueueStage(stage) || !/get next/.test(stage.actionName.toLowerCase())) continue;
+      for (const output of stage.outputs) {
+        const item = process.dataItems.find(
+          (d) => d.name === output.storeIn && d.dataType === 'collection',
+        );
+        if (item?.fields?.length) {
+          collections.set(output.storeIn, new Map(item.fields.map((f) => [f.name, f.type])));
+        }
+      }
+    }
+    if (collections.size > 0) queueCollectionsByPage.set(page.name, collections);
+  }
+
+  // b) callee pages fed a whole queue collection via a page-reference input
+  const queueParamsByPage = new Map<string, Map<string, Map<string, string>>>();
+  for (const page of process.pages) {
+    const collections = queueCollectionsByPage.get(page.name);
+    if (!collections) continue;
+    for (const stage of page.stages) {
+      if (stage.kind !== 'subsheetRef') continue;
+      for (const input of stage.inputs) {
+        const match = /^\s*\[([^\].]+)\]\s*$/.exec(input.expression.raw);
+        const fields = match ? collections.get(match[1]!.trim()) : undefined;
+        if (fields !== undefined) {
+          const calleeParams = queueParamsByPage.get(stage.targetPageName) ?? new Map();
+          calleeParams.set(input.paramName, fields);
+          queueParamsByPage.set(stage.targetPageName, calleeParams);
+        }
+      }
+    }
+  }
+
+  // c) pages needing io_TransactionItem: status writers and queue-collection
+  //    receivers without their own Get Next, plus (fixpoint) their callers.
+  const needsItem = new Set<string>();
+  for (const page of process.pages) {
+    if (pageHasGetNext(page)) continue;
+    if (usesItemStatus(page) || queueParamsByPage.has(page.name)) needsItem.add(page.name);
+  }
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const page of process.pages) {
+      if (needsItem.has(page.name) || pageHasGetNext(page)) continue;
+      if (page.stages.some((s) => s.kind === 'subsheetRef' && needsItem.has(s.targetPageName))) {
+        needsItem.add(page.name);
+        grew = true;
+      }
+    }
+  }
+
+  // d) augment signatures — callers bind io_TransactionItem like any InOut arg
+  for (const page of process.pages) {
+    if (!needsItem.has(page.name)) continue;
+    const signature = signaturesByPageName.get(page.name)!;
+    signature.args.push({ name: TRANSACTION_ITEM_ARG, direction: 'inout', type: 'QueueItem' });
+    signature.typeMap.set(TRANSACTION_ITEM_ARG, 'QueueItem');
+  }
+
   // Pass 2: convert pages
   for (const [index, page] of process.pages.entries()) {
     const isMain = index === 0;
@@ -1169,6 +1296,10 @@ export function convertProcess(
       objectRoutes,
       punch,
       options.codeOverrides ?? {},
+      {
+        receivesTransactionItem: needsItem.has(page.name),
+        queueParams: queueParamsByPage.get(page.name) ?? new Map(),
+      },
     );
     for (const id of result.converted) convertedIds.add(id);
     workflows.push({ path, doc: result.doc });

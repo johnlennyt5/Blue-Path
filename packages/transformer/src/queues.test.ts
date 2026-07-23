@@ -52,7 +52,7 @@ describe('S5-2 · performer queue conversion', () => {
     expect(mainXaml).toContain('<Variable x:TypeArguments="ui:QueueItem" Name="TransactionItem" />');
   });
 
-  it('Mark Exception → Failed with reason; cross-page TransactionItem is flagged', async () => {
+  it('Mark Exception → Failed with reason; TransactionItem arrives as io_ argument', async () => {
     const model = await sample2();
     const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
     const conversion = convertProcess(model, performer);
@@ -63,12 +63,39 @@ describe('S5-2 · performer queue conversion', () => {
     expect(pageXaml).toContain('Reason="[&quot;Failed to enter invoice&quot;]"');
 
     const reasons = conversion.punchList.map((i) => i.reason);
-    expect(reasons.some((r) => r.includes('pass it into this page'))).toBe(true);
+    // BL-013: the restructure flag is gone — the item is passed through.
+    expect(reasons.some((r) => r.includes('pass it into this page'))).toBe(false);
+    expect(reasons.some((r) => r.includes('verify every call site binds it'))).toBe(true);
     expect(reasons.some((r) => r.includes('SpecificContent'))).toBe(true);
 
     // Full coverage — remaining punch entries are review flags, not gaps
     expect(conversion.convertedStageCount).toBe(conversion.totalStageCount);
     expect(conversion.coveragePct).toBe(100);
+  });
+
+  it('BL-013: Process Item receives io_TransactionItem; caller binds it; reads use SpecificContent', async () => {
+    const model = await sample2();
+    const performer = model.processes.find((p) => p.name === 'Invoice Performer')!;
+    const conversion = convertProcess(model, performer);
+    const mainXaml = emitWorkflowXaml(conversion.workflows[0]!.doc);
+    const pageXaml = emitWorkflowXaml(conversion.workflows[1]!.doc);
+
+    // Callee declares the InOut argument and uses it for status + field reads
+    expect(pageXaml).toContain(
+      '<x:Property Name="io_TransactionItem" Type="InOutArgument(ui:QueueItem)" />',
+    );
+    expect(pageXaml).toContain('TransactionItem="[io_TransactionItem]"');
+    expect(pageXaml).toContain(
+      'CStr(io_TransactionItem.SpecificContent(&quot;Invoice Ref&quot;))',
+    );
+    expect(pageXaml).toContain('CDbl(io_TransactionItem.SpecificContent(&quot;Amount&quot;))');
+    // No stray local variable shadowing the argument
+    expect(pageXaml).not.toContain('<Variable x:TypeArguments="ui:QueueItem"');
+
+    // Caller passes its local TransactionItem through the InOut binding
+    expect(mainXaml).toContain(
+      '<InOutArgument x:TypeArguments="ui:QueueItem" x:Key="io_TransactionItem">[TransactionItem]</InOutArgument>',
+    );
   });
 
   it('BL-012: queue item data is a rewrite note, never a manual-mapping gap', async () => {

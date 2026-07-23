@@ -27,11 +27,17 @@ export interface TranslateOptions {
    * rewrite to typed `TransactionItem.SpecificContent("Field")` access.
    */
   queueCollections?: Map<string, Map<string, string>>;
+  /**
+   * BL-013: identifier holding the queue item in the emitting scope —
+   * `TransactionItem` on the page that ran Get Next Item (default), or the
+   * `io_TransactionItem` argument in pages the item is passed into.
+   */
+  transactionItemVar?: string;
 }
 
 /** Option Strict-safe read of a SpecificContent field, typed per BP field type. */
-function specificContentAccess(field: string, bpType: string | undefined): string {
-  const access = `TransactionItem.SpecificContent("${field}")`;
+function specificContentAccess(field: string, bpType: string | undefined, itemVar: string): string {
+  const access = `${itemVar}.SpecificContent("${field}")`;
   switch (bpType) {
     case 'number':
       return `CDbl(${access})`;
@@ -478,6 +484,7 @@ function emit(
       if (queueFields !== undefined) {
         // BL-012: this collection carries the current queue item — read the
         // field from SpecificContent instead of a never-filled DataTable.
+        const itemVar = options.transactionItemVar ?? 'TransactionItem';
         const bpType = queueFields.get(field);
         if (bpType === undefined) {
           issues.push(
@@ -485,10 +492,10 @@ function emit(
           );
         } else {
           issues.push(
-            `[${ref}] rewritten to typed TransactionItem.SpecificContent("${field}") — verify the field name matches the queue schema`,
+            `[${ref}] rewritten to typed ${itemVar}.SpecificContent("${field}") — verify the field name matches the queue schema`,
           );
         }
-        return specificContentAccess(field, bpType);
+        return specificContentAccess(field, bpType, itemVar);
       }
       if (options.loop && options.loop.collectionName === base) {
         issues.push(
