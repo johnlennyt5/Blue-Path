@@ -184,6 +184,13 @@ const sec003 = defineRule(
 );
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Display-quote a literal for finding messages. JSON.stringify doubled
+ * backslashes (\\fs01\… for UNC paths — BL-019); render the raw value.
+ */
+const quoted = (value: string): string => `"${value}"`;
+
 // SEC-004 — hardcoded environment value
 // ---------------------------------------------------------------------------
 
@@ -209,7 +216,7 @@ const sec004 = defineRule(
             makeFinding(
               sec004.meta,
               { ...ownerLocation(owner, ownerType), ...at },
-              `Data item "${item.name}" hardcodes the environment value ${JSON.stringify(value)}.`,
+              `Data item "${item.name}" hardcodes the environment value ${quoted(value)}.`,
               'Move the value to a Blue Prism environment variable today and an Orchestrator asset after migration; reference it instead of embedding it.',
               0.85,
             ),
@@ -226,7 +233,7 @@ const sec004 = defineRule(
             makeFinding(
               sec004.meta,
               locationOf(visit),
-              `Input "${paramName}" on stage "${visit.stage.name}" hardcodes the environment value ${JSON.stringify(literal)}.`,
+              `Input "${paramName}" on stage "${visit.stage.name}" hardcodes the environment value ${quoted(literal)}.`,
               'Reference an environment variable / Orchestrator asset instead of the literal.',
               0.85,
             ),

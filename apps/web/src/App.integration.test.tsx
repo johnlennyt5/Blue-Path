@@ -71,7 +71,7 @@ describe('drop-to-analysis integration', () => {
     await loadSampleIntoApp();
 
     expect(await screen.findByText('Drop Test Process')).toBeTruthy();
-    expect(await screen.findByText('C')).toBeTruthy(); // SEC-001 critical → 75/C
+    expect((await screen.findAllByText('C'))[0]).toBeTruthy(); // SEC-001 critical → 75/C (card badge + rollup chip)
     expect(await screen.findByText('75/100')).toBeTruthy();
     expect(await screen.findByText('1 finding')).toBeTruthy();
   });

@@ -384,14 +384,45 @@ const FUNCTIONS: Record<string, (h: EmitHelpers) => string> = {
       const key = interval.value.replaceAll('"', '').toLowerCase();
       const method = methods[key];
       if (method) return `${h.postfixArg(2)}.${method}(${h.arg(1)})`;
+      // BL-015: calendar intervals without a DateTime method → native VB DateAdd
+      const calendar: Record<string, string> = {
+        q: 'DateInterval.Quarter',
+        ww: 'DateInterval.WeekOfYear',
+        w: 'DateInterval.Weekday',
+        y: 'DateInterval.DayOfYear',
+      };
+      if (calendar[key] !== undefined) {
+        return `DateAdd(${calendar[key]}, ${h.arg(1)}, ${h.arg(2)})`;
+      }
     }
     h.flag(`DateAdd interval not recognized — verify manually: ${h.original}`);
     return `DateAdd(${h.all()})`;
   },
   datediff: (h) => {
+    // BL-015: full interval set. TimeSpan components where they exist;
+    // calendar intervals (months/years/weeks) via VB.NET's native DateDiff.
     const interval = h.argNode(0);
-    if (interval?.type === 'literal' && interval.value === '"d"') {
-      return `CInt((${h.arg(2)} - ${h.arg(1)}).TotalDays)`;
+    if (interval?.type === 'literal' && typeof interval.value === 'string') {
+      const key = interval.value.replaceAll('"', '').toLowerCase();
+      const spans: Record<string, string> = {
+        d: 'TotalDays',
+        h: 'TotalHours',
+        n: 'TotalMinutes',
+        s: 'TotalSeconds',
+      };
+      if (spans[key] !== undefined) {
+        return `CInt((${h.arg(2)} - ${h.arg(1)}).${spans[key]})`;
+      }
+      const calendar: Record<string, string> = {
+        yyyy: 'DateInterval.Year',
+        q: 'DateInterval.Quarter',
+        m: 'DateInterval.Month',
+        ww: 'DateInterval.WeekOfYear',
+        w: 'DateInterval.Weekday',
+      };
+      if (calendar[key] !== undefined) {
+        return `CInt(DateDiff(${calendar[key]}, ${h.arg(1)}, ${h.arg(2)}))`;
+      }
     }
     h.flag(`DateDiff interval not supported yet — verify manually: ${h.original}`);
     return `DateDiff(${h.all()})`;

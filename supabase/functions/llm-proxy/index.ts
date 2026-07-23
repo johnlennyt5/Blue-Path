@@ -23,13 +23,21 @@ const RATE_LIMIT_PER_HOUR = Number(Deno.env.get('LLM_RATE_LIMIT_PER_HOUR') ?? 30
 // Anything that smells like source content is refused outright.
 const XML_MARKERS = ['<?xml', '<process', '<stage', '<object', 'xmlns', '<activity', '</'];
 
-const SYSTEM_PROMPT = [
+const NARRATIVE_PROMPT = [
   'You are documenting a Blue Prism automation for a migration audit.',
   'You receive a REDACTED digest: names, types, and structure only — no values.',
   'Write a concise business narrative: what the automation appears to do, the',
   'applications and queues it touches, its exception strategy, and anything a',
   'migration team should pay attention to. Never invent specific values,',
   'volumes, or business rules the digest does not show. Under 250 words.',
+].join(' ');
+
+const CODE_PROMPT = [
+  'You translate legacy RPA code stages (VB, C#, or JScript) into idiomatic',
+  'modern VB.NET for a UiPath Invoke Code activity. String literals were',
+  'redacted to __LIT_n__ placeholders — reproduce every placeholder EXACTLY',
+  'as written, never invent their contents. Keep argument names unchanged.',
+  'Return ONLY the translated code, no commentary, no markdown fences.',
 ].join(' ');
 
 Deno.serve(async (req) => {
@@ -53,6 +61,7 @@ Deno.serve(async (req) => {
       workspace_id?: string;
       digest?: unknown;
       owner_name?: string;
+      mode?: 'narrative' | 'code';
       dry_run?: boolean;
     };
     try {
@@ -108,7 +117,7 @@ Deno.serve(async (req) => {
       .from('audit_events')
       .select('id', { count: 'exact', head: true })
       .eq('workspace_id', workspace_id)
-      .eq('event', 'ai.narrative')
+      .in('event', ['ai.narrative', 'ai.code_translation'])
       .gte('at', oneHourAgo);
     if ((count ?? 0) >= RATE_LIMIT_PER_HOUR) {
       return json(
@@ -121,7 +130,7 @@ Deno.serve(async (req) => {
     await service.from('audit_events').insert({
       workspace_id,
       actor: caller.user.id,
-      event: 'ai.narrative',
+      event: payload.mode === 'code' ? 'ai.code_translation' : 'ai.narrative',
       subject_type: 'digest',
       detail: { owner: owner_name ?? null, bytes: bodyText.length },
     });
@@ -151,7 +160,7 @@ Deno.serve(async (req) => {
           model: Deno.env.get('LLM_MODEL') ?? 'gpt-4o-mini',
           max_tokens: 700,
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: payload.mode === 'code' ? CODE_PROMPT : NARRATIVE_PROMPT },
             { role: 'user', content: JSON.stringify(digest) },
           ],
         }),
@@ -176,7 +185,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           model: Deno.env.get('LLM_MODEL') ?? 'claude-sonnet-5',
           max_tokens: 700,
-          system: SYSTEM_PROMPT,
+          system: payload.mode === 'code' ? CODE_PROMPT : NARRATIVE_PROMPT,
           messages: [{ role: 'user', content: JSON.stringify(digest) }],
         }),
       });

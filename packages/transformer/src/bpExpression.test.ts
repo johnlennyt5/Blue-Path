@@ -209,6 +209,29 @@ const CLEAN: [string, string][] = [
   ['InStr([A], [B]) > 0', 'InStr(A, B) > 0'],
 ];
 
+describe('BL-015 · DateDiff/DateAdd interval coverage', () => {
+  const clean: [string, string][] = [
+    ['DateDiff("h", [Start], [Finish])', 'CInt((Finish - Start).TotalHours)'],
+    ['DateDiff("n", [Start], [Finish])', 'CInt((Finish - Start).TotalMinutes)'],
+    ['DateDiff("s", [Start], [Finish])', 'CInt((Finish - Start).TotalSeconds)'],
+    ['DateDiff("m", [Start], [Finish])', 'CInt(DateDiff(DateInterval.Month, Start, Finish))'],
+    ['DateDiff("yyyy", [Start], [Finish])', 'CInt(DateDiff(DateInterval.Year, Start, Finish))'],
+    ['DateDiff("ww", [Start], [Finish])', 'CInt(DateDiff(DateInterval.WeekOfYear, Start, Finish))'],
+    ['DateAdd("ww", 2, [Start])', 'DateAdd(DateInterval.WeekOfYear, 2, Start)'],
+    ['DateAdd("q", 1, [Start])', 'DateAdd(DateInterval.Quarter, 1, Start)'],
+  ];
+  for (const [input, expected] of clean) {
+    it(`${input} → ${expected}`, () => {
+      expect(vb(input)).toBe(expected);
+    });
+  }
+
+  it('still flags a truly unknown interval', () => {
+    const result = translateBpExpression('DateDiff("banana", [A], [B])', { resolveRef: resolve });
+    expect(result.issues.length).toBeGreaterThan(0);
+  });
+});
+
 describe(`clean translations (${CLEAN.length} cases)`, () => {
   it.each(CLEAN)('%s → %s', (bp, expected) => {
     expect(vb(bp)).toBe(expected);
@@ -230,8 +253,8 @@ const FLAGGED: FlaggedCase[] = [
   { bp: 'Bar()', vbContains: 'Bar()', issueContains: 'Unknown function "Bar"' },
   { bp: 'MakeDate(2024, 1, 1)', issueContains: 'Unknown function "MakeDate"' },
   { bp: 'DateAdd([Interval], 1, [D])', vbContains: 'DateAdd(', issueContains: 'DateAdd interval' },
-  { bp: 'DateAdd("q", 1, [D])', issueContains: 'DateAdd interval' },
-  { bp: 'DateDiff("m", [A], [B])', vbContains: 'DateDiff(', issueContains: 'DateDiff interval' },
+  { bp: 'DateAdd("zz", 1, [D])', issueContains: 'DateAdd interval' },
+  { bp: 'DateDiff("zz", [A], [B])', vbContains: 'DateDiff(', issueContains: 'DateDiff interval' },
   {
     bp: '[Coll.Field]',
     vbContains: 'Coll.Rows(0)("Field")',

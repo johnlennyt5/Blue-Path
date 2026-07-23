@@ -60,26 +60,43 @@ export type ObjectDelivery = 'embed' | 'library';
 export function buildProcessExport(
   model: AutomationModel,
   process: ProcessNode,
+  codeOverrides: Record<string, string> = {},
   objectDelivery: ObjectDelivery = 'embed',
 ): ProcessExport {
-  const conversion = convertProcess(model, process);
+  const conversion = convertProcess(model, process, { codeOverrides });
   const layout = decideProjectLayout({
     stageCount: conversion.totalStageCount,
     usesQueues: processUsesQueues(process),
   });
   const queueName = firstQueueName(process);
   const objectNames = referencedObjects(model, process);
+  // BL-016: seed the REFramework Config from the release itself
+  const configEntries = [
+    ...(queueName !== undefined ? [{ key: 'OrchestratorQueueName', value: queueName }] : []),
+    ...model.environmentVars.map((envVar) => ({ key: envVar.name, value: envVar.value ?? '' })),
+    ...model.credentialsRefs.map((credential) => ({
+      key: `${credential.name}_CredentialAsset`,
+      value: credential.name,
+    })),
+  ];
   const project = buildProject({
     name: process.name,
     description: `Converted from Blue Prism "${process.name}" by PrismShift (coverage ${conversion.coveragePct}%).`,
     layout,
     ...(queueName !== undefined ? { queueName } : {}),
     workflows: conversion.workflows,
+    configEntries,
   });
+  if (layout === 'reframework') {
+    project.files.push({
+      path: 'Data/Config.json',
+      content: `${JSON.stringify(Object.fromEntries(configEntries.map((e) => [e.key, e.value])), null, 2)}\n`,
+    });
+  }
 
   const objectConversions = model.objects
     .filter((o) => objectNames.includes(o.name))
-    .map((o) => convertObject(model, o));
+    .map((o) => convertObject(model, o, { codeOverrides }));
 
   if (objectDelivery === 'embed') {
     // Copy mode (default): referenced objects ship as Objects/<Object>/<Page>.xaml
@@ -137,8 +154,9 @@ export interface ObjectLibraryExport {
 export function buildObjectLibraryExport(
   model: AutomationModel,
   object: BusinessObjectNode,
+  codeOverrides: Record<string, string> = {},
 ): ObjectLibraryExport {
-  const conversion = convertObject(model, object);
+  const conversion = convertObject(model, object, { codeOverrides });
   const project = buildLibraryProject({
     name: object.name,
     workflows: conversion.workflows,
@@ -188,11 +206,12 @@ export interface ReleaseExport {
  */
 export function buildReleaseExport(
   model: AutomationModel,
+  codeOverrides: Record<string, string> = {},
   options: { objects?: ObjectDelivery } = {},
 ): ReleaseExport {
   const objectDelivery = options.objects ?? 'embed';
   const exports = model.processes.map((process) =>
-    buildProcessExport(model, process, objectDelivery),
+    buildProcessExport(model, process, codeOverrides, objectDelivery),
   );
   const files = exports.flatMap((processExport) => {
     const folder = processExport.project.name.replace(/[^A-Za-z0-9_-]+/g, '_');
@@ -209,7 +228,7 @@ export function buildReleaseExport(
     );
     for (const object of model.objects) {
       if (!referenced.has(object.name)) continue;
-      const library = buildObjectLibraryExport(model, object);
+      const library = buildObjectLibraryExport(model, object, codeOverrides);
       const folder = `Libraries/${sanitizeFileName(object.name)}`;
       files.push(
         ...library.project.files.map((file) => ({
