@@ -31,6 +31,18 @@ export const SAMPLES: CorpusSampleRef[] = [
   { id: '04-edge-cases', title: 'Edge Cases' },
 ];
 
+/** Automation Anywhere samples (BL-004) — same answer-key schema. */
+export const AA_SAMPLES: CorpusSampleRef[] = [
+  { id: 'aa-01-invoice-loader', title: 'AA · Invoice Loader' },
+];
+
+export interface LoadedAaSample {
+  ref: CorpusSampleRef;
+  /** Raw A360 .bot JSON, exactly as a user would drag into the app. */
+  json: string;
+  answerKey: AnswerKey;
+}
+
 export interface LoadedSample {
   ref: CorpusSampleRef;
   /** Raw .bprelease XML, exactly as a user would drag into the app. */
@@ -41,6 +53,20 @@ export interface LoadedSample {
 const samplesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'samples');
 
 /** Loads a sample's XML and answer key from the samples directory. */
+export async function loadAaSample(id: string): Promise<LoadedAaSample> {
+  const ref = AA_SAMPLES.find((s) => s.id === id);
+  if (!ref) {
+    throw new Error(
+      `Unknown AA corpus sample "${id}". Known: ${AA_SAMPLES.map((s) => s.id).join(', ')}`,
+    );
+  }
+  const answerKey = JSON.parse(
+    await readFile(path.join(samplesDir, `${id}.answer-key.json`), 'utf8'),
+  ) as AnswerKey;
+  const json = await readFile(path.join(samplesDir, answerKey.file), 'utf8');
+  return { ref, json, answerKey };
+}
+
 export async function loadSample(id: string): Promise<LoadedSample> {
   const ref = SAMPLES.find((s) => s.id === id);
   if (!ref) {
